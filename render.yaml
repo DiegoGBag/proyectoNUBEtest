@@ -1,0 +1,43 @@
+# Blueprint de Render: crea los dos servicios de la API (pruebas y produccion).
+# Los valores marcados `sync: false` se escriben a mano en el panel de Render
+# (nunca se suben a Git).
+services:
+  # --- PRUEBAS: se despliega al hacer push a la rama `develop` -----------------
+  - type: web
+    name: events-api-test
+    runtime: docker
+    rootDir: eventos-api
+    dockerfilePath: ./Dockerfile
+    branch: develop
+    plan: free # se duerme tras 15 min sin trafico; la primera peticion tarda ~1 min
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: APP_ENV
+        value: testing
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+
+  # --- PRODUCCION: se despliega al hacer push a la rama `main` -----------------
+  - type: web
+    name: events-api-prod
+    runtime: docker
+    rootDir: eventos-api
+    dockerfilePath: ./Dockerfile
+    branch: main
+    plan: starter # de paga: no se duerme. Cambia a `free` si prefieres no pagar aun.
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false

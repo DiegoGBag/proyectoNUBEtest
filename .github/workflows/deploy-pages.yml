@@ -1,0 +1,101 @@
+# Publica el frontend en GitHub Pages con DOS entornos en un mismo sitio:
+#   rama main    -> https://<usuario>.github.io/<repo>/        (PRODUCCION, usa PROD_API_URL)
+#   rama develop -> https://<usuario>.github.io/<repo>/test/   (PRUEBAS,    usa TEST_API_URL)
+# Cada push a main o develop reconstruye y publica los dos juntos, porque Pages solo
+# admite un sitio por repositorio.
+name: Deploy a GitHub Pages
+
+on:
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  REPO_NAME: ${{ github.event.repository.name }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verificar variables del repositorio
+        env:
+          PROD_API_URL: ${{ vars.PROD_API_URL }}
+          TEST_API_URL: ${{ vars.TEST_API_URL }}
+        run: |
+          if [ -z "$PROD_API_URL" ] || [ -z "$TEST_API_URL" ]; then
+            echo "::error::Faltan las variables PROD_API_URL y/o TEST_API_URL (Settings > Secrets and variables > Actions > Variables)."
+            exit 1
+          fi
+
+      # ---------- PRODUCCION (main) ----------
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: prod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: prod/package-lock.json
+      - name: Build produccion
+        working-directory: prod
+        env:
+          VITE_BASE: /${{ env.REPO_NAME }}/
+          VITE_API_URL: ${{ vars.PROD_API_URL }}
+        run: |
+          npm ci
+          npx vite build --mode production
+
+      # ---------- PRUEBAS (develop) ----------
+      - name: Checkout develop
+        id: dev_checkout
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          ref: develop
+          path: test
+      - uses: actions/setup-node@v4
+        if: steps.dev_checkout.outcome == 'success'
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: test/package-lock.json
+      - name: Build pruebas
+        if: steps.dev_checkout.outcome == 'success'
+        working-directory: test
+        env:
+          VITE_BASE: /${{ env.REPO_NAME }}/test/
+          VITE_API_URL: ${{ vars.TEST_API_URL }}
+        run: |
+          npm ci
+          npx vite build --mode test
+
+      # ---------- Ensamblar un solo sitio ----------
+      - name: Ensamblar sitio
+        run: |
+          mkdir _site
+          cp -r prod/dist/. _site/
+          if [ -d test/dist ]; then mkdir _site/test && cp -r test/dist/. _site/test/; fi
+          touch _site/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

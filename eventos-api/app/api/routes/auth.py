@@ -1,0 +1,62 @@
+import re
+import uuid
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.api.deps import get_db
+from app.core.security import create_access_token, hash_password, verify_password
+from app.models import Tenant, TenantUser, User
+from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
+
+router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+
+def _slugify(name: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+    return slug or "tenant"
+
+
+@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+def register(body: RegisterRequest, db: Session = Depends(get_db)):
+    """Crea un tenant nuevo y a su primer usuario (owner)."""
+    email = body.email.lower()
+    if db.scalar(select(User.user_id).where(User.email == email)):
+        raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered")
+
+    slug = _slugify(body.tenant_name)
+    if db.scalar(select(Tenant.tenant_id).where(Tenant.slug == slug)):
+        slug = f"{slug}-{uuid.uuid4().hex[:6]}"
+
+    tenant = Tenant(name=body.tenant_name, slug=slug)
+    user = User(
+        full_name=body.full_name,
+        email=email,
+        password_hash=hash_password(body.password),
+    )
+    db.add_all([tenant, user])
+    db.flush()
+    db.add(TenantUser(tenant_id=tenant.tenant_id, user_id=user.user_id, role_name="owner"))
+    db.commit()
+
+    return TokenResponse(access_token=create_access_token(user.user_id, tenant.tenant_id))
+
+
+@router.post("/login", response_model=TokenResponse)
+def login(body: LoginRequest, db: Session = Depends(get_db)):
+    user = db.scalar(select(User).where(User.email == body.email.lower()))
+    if user is None or not user.is_active or not verify_password(body.password, user.password_hash):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid credentials")
+
+    # Un usuario puede pertenecer a varios tenants; por ahora se usa el primero
+    # al que se unio. (Selector de tenant: pendiente.)
+    tenant_id = db.scalar(
+        select(TenantUser.tenant_id)
+        .where(TenantUser.user_id == user.user_id)
+        .order_by(TenantUser.joined_at)
+    )
+    if tenant_id is None:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "User does not belong to any tenant")
+
+    return TokenResponse(access_token=create_access_token(user.user_id, tenant_id))
