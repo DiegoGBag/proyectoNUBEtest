@@ -68,6 +68,8 @@ export async function register({ fullName, email, password, tenantName }) {
   setToken(data.access_token)
 }
 
+export const getCurrentUser = () => request('/api/auth/me')
+
 // --- Events ------------------------------------------------------------------
 
 // La API guarda y devuelve UTC (sin zona, ej. "2026-10-06T01:00:00").

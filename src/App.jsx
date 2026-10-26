@@ -5,6 +5,7 @@ import {
   clearToken,
   createEvent as createEventRequest,
   getCompletedEvents,
+  getCurrentUser,
   getOverview,
   getStats,
   getToken,
@@ -70,6 +71,13 @@ function EventsApp({ onLogout }) {
   const [completedEvents, setCompletedEvents] = useState([])
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
+  const [currentUser, setCurrentUser] = useState(null)
+
+  useEffect(() => {
+    getCurrentUser()
+      .then(setCurrentUser)
+      .catch(() => {})
+  }, [])
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -255,12 +263,6 @@ function EventsApp({ onLogout }) {
             <h1>Completed events</h1>
             <p>Review the details and results of your past events</p>
           </div>
-          <button className="create-event" type="button" onClick={openCreateForm}>
-            <span className="plus-icon" aria-hidden="true">
-              +
-            </span>
-            Create event
-          </button>
         </header>
 
         {error && (
@@ -479,6 +481,11 @@ function EventsApp({ onLogout }) {
         </div>
 
         <div className="header-actions">
+          {currentUser && (
+            <span className="user-name" title={currentUser.email}>
+              {currentUser.full_name}
+            </span>
+          )}
           <button className="create-event" type="button" onClick={openCreateForm}>
             <span className="plus-icon" aria-hidden="true">
               +

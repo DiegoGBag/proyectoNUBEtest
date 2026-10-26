@@ -5,10 +5,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db
+from app.api.deps import CurrentUser, get_current_user, get_db
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models import Tenant, TenantUser, User
-from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
+from app.schemas.auth import LoginRequest, MeResponse, RegisterRequest, TokenResponse
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -60,3 +60,11 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "User does not belong to any tenant")
 
     return TokenResponse(access_token=create_access_token(user.user_id, tenant_id))
+
+
+@router.get("/me", response_model=MeResponse)
+def me(current: CurrentUser = Depends(get_current_user), db: Session = Depends(get_db)):
+    user = db.get(User, current.user_id)
+    if user is None or not user.is_active:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or missing token")
+    return MeResponse(full_name=user.full_name, email=user.email)

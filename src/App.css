@@ -919,6 +919,14 @@
   margin-top: 0;
 }
 
+.header-actions .user-name {
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+  font-size: 22px;
+  font-weight: 600;
+}
+
 .header-actions .cancel-button {
   display: inline-flex;
   align-items: center;
