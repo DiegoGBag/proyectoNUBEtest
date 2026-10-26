@@ -67,4 +67,9 @@ def me(current: CurrentUser = Depends(get_current_user), db: Session = Depends(g
     user = db.get(User, current.user_id)
     if user is None or not user.is_active:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or missing token")
-    return MeResponse(full_name=user.full_name, email=user.email)
+    tenant = db.get(Tenant, current.tenant_id)
+    return MeResponse(
+        full_name=user.full_name,
+        email=user.email,
+        tenant_name=tenant.name if tenant else "",
+    )

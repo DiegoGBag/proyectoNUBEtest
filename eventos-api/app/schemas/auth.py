@@ -16,6 +16,7 @@ class LoginRequest(BaseModel):
 class MeResponse(BaseModel):
     full_name: str
     email: EmailStr
+    tenant_name: str
 
 
 class TokenResponse(BaseModel):

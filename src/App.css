@@ -919,12 +919,31 @@
   margin-top: 0;
 }
 
-.header-actions .user-name {
-  display: inline-flex;
-  align-items: center;
+.header-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
   width: 100%;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+}
+
+.user-name {
+  color: var(--heading);
   font-size: 22px;
   font-weight: 600;
+}
+
+.user-tenant {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 15px;
 }
 
 .header-actions .cancel-button {

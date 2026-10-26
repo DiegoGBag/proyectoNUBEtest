@@ -475,17 +475,23 @@ function EventsApp({ onLogout }) {
   return (
     <main className="dashboard">
       <header className="page-header">
-        <div>
-          <h1>Events</h1>
-          <p>Create and manage your events in one place</p>
+        <div className="header-top">
+          <div>
+            <h1>Events</h1>
+            <p>Create and manage your events in one place</p>
+          </div>
+
+          {currentUser && (
+            <div className="user-info" title={currentUser.email}>
+              <span className="user-name">{currentUser.full_name}</span>
+              {currentUser.tenant_name && (
+                <span className="user-tenant">{currentUser.tenant_name}</span>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="header-actions">
-          {currentUser && (
-            <span className="user-name" title={currentUser.email}>
-              {currentUser.full_name}
-            </span>
-          )}
           <button className="create-event" type="button" onClick={openCreateForm}>
             <span className="plus-icon" aria-hidden="true">
               +
