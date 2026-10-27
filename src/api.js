@@ -14,7 +14,18 @@ export const getToken = () => localStorage.getItem(TOKEN_KEY)
 export const setToken = (token) => localStorage.setItem(TOKEN_KEY, token)
 export const clearToken = () => localStorage.removeItem(TOKEN_KEY)
 
-async function request(path, { method = 'GET', body } = {}) {
+// El rol sale del payload del JWT solo para decidir que pantalla mostrar; la API
+// valida el token en cada peticion, asi que alterarlo aqui no da acceso a nada.
+export const getRole = () => {
+  try {
+    const payload = getToken().split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+    return JSON.parse(atob(payload)).role ?? 'user'
+  } catch {
+    return null
+  }
+}
+
+export async function request(path, { method = 'GET', body } = {}) {
   const headers = {}
   const token = getToken()
   if (body !== undefined) headers['Content-Type'] = 'application/json'
@@ -69,6 +80,8 @@ export async function register({ fullName, email, password, tenantName }) {
 }
 
 export const getCurrentUser = () => request('/api/auth/me')
+
+export const isMasterAdmin = () => getRole() === 'master'
 
 // --- Events ------------------------------------------------------------------
 

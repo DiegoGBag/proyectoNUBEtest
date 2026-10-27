@@ -13,6 +13,11 @@ class Settings(BaseSettings):
     AWS_REGION: str = "us-east-1"
     APP_ENV: str = "development"
 
+    # Administrador maestro: sus credenciales viven en codigo (no hay fila en Users).
+    # Se pueden sobreescribir con las variables de entorno ADMIN_EMAIL / ADMIN_PASSWORD.
+    ADMIN_EMAIL: str = "admin-d"
+    ADMIN_PASSWORD: str = "admind123456789"
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]

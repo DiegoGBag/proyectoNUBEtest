@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useState } from 'react'
 import './App.css'
 import AuthScreen from './AuthScreen'
 import {
@@ -10,7 +10,11 @@ import {
   getStats,
   getToken,
   getUpcomingEvents,
+  isMasterAdmin,
 } from './api'
+
+// El panel del administrador maestro se descarga solo cuando ese usuario entra.
+const AdminApp = lazy(() => import('./admin/AdminApp'))
 
 const initialStatistics = {
   total: 0,
@@ -50,14 +54,20 @@ function App() {
     return <AuthScreen onAuthenticated={() => setIsAuthenticated(true)} />
   }
 
-  return (
-    <EventsApp
-      onLogout={() => {
-        clearToken()
-        setIsAuthenticated(false)
-      }}
-    />
-  )
+  const logout = () => {
+    clearToken()
+    setIsAuthenticated(false)
+  }
+
+  if (isMasterAdmin()) {
+    return (
+      <Suspense fallback={<main className="dashboard">Loading…</main>}>
+        <AdminApp onLogout={logout} />
+      </Suspense>
+    )
+  }
+
+  return <EventsApp onLogout={logout} />
 }
 
 function EventsApp({ onLogout }) {
@@ -487,6 +497,9 @@ function EventsApp({ onLogout }) {
               {currentUser.tenant_name && (
                 <span className="user-tenant">{currentUser.tenant_name}</span>
               )}
+              <span className="user-tenant-id" title="Tenant ID">
+                {currentUser.tenant_id}
+              </span>
             </div>
           )}
         </div>

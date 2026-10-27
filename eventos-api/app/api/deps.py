@@ -16,7 +16,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
-from app.core.security import decode_access_token
+from app.core.security import ADMIN_ROLE, decode_access_token
 from app.db.session import SessionLocal
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -51,3 +51,22 @@ def get_current_user(
         )
     except (jwt.PyJWTError, KeyError, ValueError):
         raise unauthorized
+
+
+def require_master_admin(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+) -> None:
+    """Solo deja pasar el token del administrador maestro (claim role=master)."""
+    unauthorized = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid or missing token",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    if credentials is None:
+        raise unauthorized
+    try:
+        payload = decode_access_token(credentials.credentials)
+    except jwt.PyJWTError:
+        raise unauthorized
+    if payload.get("role") != ADMIN_ROLE:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Master administrator access required")

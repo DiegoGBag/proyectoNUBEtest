@@ -68,11 +68,11 @@ function AuthScreen({ onAuthenticated }) {
         )}
 
         <label>
-          Email
+          {isRegister ? 'Email' : 'Email or username'}
           <input
             required
-            type="email"
-            autoComplete="email"
+            type={isRegister ? 'email' : 'text'}
+            autoComplete={isRegister ? 'email' : 'username'}
             value={form.email}
             onChange={(e) => update('email', e.target.value)}
           />

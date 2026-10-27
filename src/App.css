@@ -940,6 +940,14 @@
   font-weight: 600;
 }
 
+.user-tenant-id {
+  margin-top: 4px;
+  color: var(--muted);
+  opacity: 0.7;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+
 .user-tenant {
   margin-top: 4px;
   color: var(--muted);
