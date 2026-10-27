@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { adminApi } from '../adminApi'
 import {
+  ActivityTable,
   Badge,
   DataTable,
   ErrorText,
@@ -21,12 +22,13 @@ export default function UsersPanel({ initialFilters, navigate }) {
   const [q, setQ] = useState(initialFilters.q ?? '')
   const [tenantId, setTenantId] = useState(initialFilters.tenant_id ?? '')
   const [active, setActive] = useState('')
+  const [role, setRole] = useState(initialFilters.role_name ?? '')
   const [offset, setOffset] = useState(0)
   const [form, setForm] = useState(null) // 'new' | user
   const [detailId, setDetailId] = useState(null)
   const { data, error, reload } = useLoad(
-    () => adminApi.users({ q, tenant_id: tenantId, is_active: active, limit: PAGE_SIZE, offset }),
-    [q, tenantId, active, offset],
+    () => adminApi.users({ q, tenant_id: tenantId, role_name: role, is_active: active, limit: PAGE_SIZE, offset }),
+    [q, tenantId, role, active, offset],
   )
   const tenants = useLoad(() => adminApi.tenants({ limit: 200 }), [])
   const remove = useAction()
@@ -94,6 +96,12 @@ export default function UsersPanel({ initialFilters, navigate }) {
               {t.name}
             </option>
           ))}
+        </select>
+        <select className="admin-select admin-input" style={{ width: 200 }} value={role} onChange={(e) => filter(setRole)(e.target.value)}>
+          <option value="">Any role</option>
+          <option value="owner">Owners</option>
+          <option value="member">Sub-users (read-only)</option>
+          <option value="admin">Admins</option>
         </select>
         <select className="admin-select admin-input" style={{ width: 150 }} value={active} onChange={(e) => filter(setActive)(e.target.value)}>
           <option value="">Any status</option>
@@ -329,6 +337,8 @@ function UserDetail({ userId, tenants, navigate, onClose }) {
         rowKey={(e) => e.event_id}
         empty="This user has not created any events"
       />
+      <h4>Recent activity</h4>
+      <ActivityTable items={user.activity} showUser={false} />
       <div className="admin-toolbar" style={{ marginTop: 16 }}>
         <button
           className="admin-btn"

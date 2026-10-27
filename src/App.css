@@ -940,6 +940,16 @@
   font-weight: 600;
 }
 
+.read-only-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 20px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  color: var(--muted);
+  font-size: 18px;
+}
+
 .user-tenant-id {
   margin-top: 4px;
   color: var(--muted);

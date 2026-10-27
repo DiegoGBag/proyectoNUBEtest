@@ -139,3 +139,24 @@ export const createEvent = (form) =>
       status: form.status,
     },
   })
+
+// Arma "?a=1&b=2" ignorando los valores vacios.
+export const toQuery = (params = {}) => {
+  const search = new URLSearchParams()
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== '' && value !== null && value !== undefined) search.set(key, value)
+  })
+  const text = search.toString()
+  return text ? `?${text}` : ''
+}
+
+// --- Equipo (sub-usuarios de solo lectura; solo el owner) --------------------
+
+export const teamApi = {
+  members: () => request('/api/team/members'),
+  summary: () => request('/api/team/summary'),
+  activity: (params) => request(`/api/team/activity${toQuery(params)}`),
+  create: (body) => request('/api/team/members', { method: 'POST', body }),
+  update: (id, body) => request(`/api/team/members/${id}`, { method: 'PUT', body }),
+  remove: (id) => request(`/api/team/members/${id}`, { method: 'DELETE' }),
+}

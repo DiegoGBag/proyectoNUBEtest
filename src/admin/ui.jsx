@@ -222,3 +222,39 @@ export function BarList({ items, labelKey, valueKey, tone = 'blue' }) {
     </ul>
   )
 }
+
+const ACTIONS = {
+  login: ['Signed in', 'green'],
+  view_dashboard: ['Opened the dashboard', 'neutral'],
+  view_upcoming: ['Viewed upcoming events', 'blue'],
+  view_completed: ['Viewed completed events', 'blue'],
+  view_event: ['Viewed an event', 'blue'],
+  denied_write: ['Tried to change data (blocked)', 'red'],
+}
+
+export const ACTION_OPTIONS = Object.entries(ACTIONS).map(([value, [label]]) => ({ value, label }))
+
+export function ActionBadge({ action }) {
+  const [label, tone] = ACTIONS[action] ?? [action, 'neutral']
+  return <Badge tone={tone}>{label}</Badge>
+}
+
+// Tabla de actividad compartida por el panel del owner y el del administrador maestro.
+export function ActivityTable({ items, showTenant = false, showUser = true }) {
+  const columns = [
+    { label: 'When', render: (a) => formatDate(a.created_at) },
+    ...(showUser ? [{ label: 'User', render: (a) => (
+      <>
+        {a.full_name}
+        <div className="admin-muted">{a.email}</div>
+      </>
+    ) }] : []),
+    ...(showTenant ? [{ label: 'Tenant', render: (a) => a.tenant_name }] : []),
+    { label: 'Activity', render: (a) => <ActionBadge action={a.action} /> },
+    { label: 'Detail', render: (a) => a.detail ?? '—' },
+    { label: 'IP', render: (a) => <span className="admin-mono">{a.ip_address ?? '—'}</span> },
+  ]
+  return (
+    <DataTable columns={columns} rows={items} rowKey={(a) => a.activity_id} empty="No activity recorded yet" />
+  )
+}

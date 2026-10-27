@@ -21,6 +21,7 @@ class MeResponse(BaseModel):
     email: EmailStr
     tenant_id: UUID
     tenant_name: str
+    role: str  # owner | admin | member (member = solo lectura)
 
 
 class TokenResponse(BaseModel):

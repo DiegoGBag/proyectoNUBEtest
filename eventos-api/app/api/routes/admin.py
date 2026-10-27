@@ -14,8 +14,9 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, require_master_admin
 from app.api.routes.auth import _slugify
+from app.core import activity
 from app.core.security import hash_password, is_admin_identifier
-from app.models import Event, EventImage, EventType, Tenant, TenantUser, User
+from app.models import Event, EventImage, EventType, Tenant, TenantUser, User, UserActivity
 from app.schemas.admin import (
     AdminEventCreate,
     AdminEventUpdate,
@@ -101,6 +102,7 @@ def overview(db: Session = Depends(get_db)):
         "active_users": db.scalar(select(func.count(User.user_id)).where(User.is_active == True)) or 0,  # noqa: E712
         "events": count(Event.event_id),
         "categories": count(EventType.event_type_id),
+        "sub_users": db.scalar(select(func.count()).where(TenantUser.role_name == "member")) or 0,
         "upcoming_events": db.scalar(
             select(func.count(Event.event_id)).where(Event.status.in_(UPCOMING_STATUSES))
         )
@@ -278,6 +280,7 @@ def delete_tenant(tenant_id: uuid.UUID, cascade: bool = False, db: Session = Dep
             f"Tenant has {events} events and {members} members; use cascade=true to delete them too",
         )
     _delete_events(db, Event.tenant_id == tenant_id)
+    db.execute(delete(UserActivity).where(UserActivity.tenant_id == tenant_id))
     db.execute(delete(TenantUser).where(TenantUser.tenant_id == tenant_id))
     db.delete(tenant)
     db.commit()
@@ -358,6 +361,9 @@ def _user_detail(db: Session, user_id: uuid.UUID) -> dict:
         _event_stmt().where(Event.created_by_user_id == user_id).order_by(Event.event_date.desc()).limit(100)
     ).all()
     user["events"] = [dict(e._mapping) for e in events]
+    user["activity"] = activity.page(
+        db, activity.feed_stmt().where(UserActivity.user_id == user_id), limit=30, offset=0
+    )["items"]
     return user
 
 
@@ -365,6 +371,7 @@ def _user_detail(db: Session, user_id: uuid.UUID) -> dict:
 def list_users(
     q: str | None = None,
     tenant_id: uuid.UUID | None = None,
+    role_name: str | None = None,
     is_active: bool | None = None,
     limit: int = Query(25, ge=1, le=200),
     offset: int = Query(0, ge=0),
@@ -373,10 +380,13 @@ def list_users(
     stmt = _user_stmt()
     if q:
         stmt = stmt.where(or_(_like(User.full_name, q), _like(User.email, q)))
-    if tenant_id:
-        stmt = stmt.where(
-            User.user_id.in_(select(TenantUser.user_id).where(TenantUser.tenant_id == tenant_id))
-        )
+    if tenant_id or role_name:
+        membership = select(TenantUser.user_id)
+        if tenant_id:
+            membership = membership.where(TenantUser.tenant_id == tenant_id)
+        if role_name:
+            membership = membership.where(TenantUser.role_name == role_name)
+        stmt = stmt.where(User.user_id.in_(membership))
     if is_active is not None:
         stmt = stmt.where(User.is_active == is_active)
     page = _page(db, stmt, [User.created_at.desc(), User.user_id], limit, offset)
@@ -457,10 +467,33 @@ def delete_user(user_id: uuid.UUID, cascade: bool = False, db: Session = Depends
             f"User created {events} events; use cascade=true to delete them too",
         )
     _delete_events(db, Event.created_by_user_id == user_id)
+    db.execute(delete(UserActivity).where(UserActivity.user_id == user_id))
     db.execute(delete(TenantUser).where(TenantUser.user_id == user_id))
     db.delete(user)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# --- Actividad ---------------------------------------------------------------
+
+
+@router.get("/activity")
+def list_activity(
+    tenant_id: uuid.UUID | None = None,
+    user_id: uuid.UUID | None = None,
+    action: str | None = None,
+    limit: int = Query(25, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+):
+    stmt = activity.feed_stmt()
+    if tenant_id:
+        stmt = stmt.where(UserActivity.tenant_id == tenant_id)
+    if user_id:
+        stmt = stmt.where(UserActivity.user_id == user_id)
+    if action:
+        stmt = stmt.where(UserActivity.action == action)
+    return activity.page(db, stmt, limit, offset)
 
 
 # --- Eventos -----------------------------------------------------------------

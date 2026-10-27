@@ -15,6 +15,8 @@ import {
 
 // El panel del administrador maestro se descarga solo cuando ese usuario entra.
 const AdminApp = lazy(() => import('./admin/AdminApp'))
+// Igual con el panel de sub-usuarios del owner.
+const TeamPanel = lazy(() => import('./TeamPanel'))
 
 const initialStatistics = {
   total: 0,
@@ -82,6 +84,11 @@ function EventsApp({ onLogout }) {
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
   const [currentUser, setCurrentUser] = useState(null)
+  const [isViewingTeam, setIsViewingTeam] = useState(false)
+
+  // Los perfiles `member` (sub-usuarios) son de solo lectura; la API lo exige igualmente.
+  const canWrite = Boolean(currentUser) && currentUser.role !== 'member'
+  const isOwner = currentUser?.role === 'owner'
 
   useEffect(() => {
     getCurrentUser()
@@ -193,6 +200,14 @@ function EventsApp({ onLogout }) {
     }).format(new Date(`${date}T00:00:00`))
   }
 
+  if (isViewingTeam && isOwner) {
+    return (
+      <Suspense fallback={<main className="dashboard">Loading…</main>}>
+        <TeamPanel organization={currentUser.tenant_name} onBack={() => setIsViewingTeam(false)} />
+      </Suspense>
+    )
+  }
+
   if (isViewingUpcoming) {
     return (
       <main className="dashboard events-page">
@@ -208,12 +223,14 @@ function EventsApp({ onLogout }) {
             <h1>Upcoming events</h1>
             <p>All your planned and active events, organized by type</p>
           </div>
-          <button className="create-event" type="button" onClick={openCreateForm}>
-            <span className="plus-icon" aria-hidden="true">
-              +
-            </span>
-            Create event
-          </button>
+          {canWrite && (
+            <button className="create-event" type="button" onClick={openCreateForm}>
+              <span className="plus-icon" aria-hidden="true">
+                +
+              </span>
+              Create event
+            </button>
+          )}
         </header>
 
         {error && (
@@ -505,12 +522,24 @@ function EventsApp({ onLogout }) {
         </div>
 
         <div className="header-actions">
-          <button className="create-event" type="button" onClick={openCreateForm}>
-            <span className="plus-icon" aria-hidden="true">
-              +
+          {canWrite && (
+            <button className="create-event" type="button" onClick={openCreateForm}>
+              <span className="plus-icon" aria-hidden="true">
+                +
+              </span>
+              Create event
+            </button>
+          )}
+          {currentUser?.role === 'member' && (
+            <span className="read-only-badge" title="Your profile can view events but not change them">
+              View only
             </span>
-            Create event
-          </button>
+          )}
+          {isOwner && (
+            <button className="cancel-button" type="button" onClick={() => setIsViewingTeam(true)}>
+              Team
+            </button>
+          )}
           <button className="cancel-button" type="button" onClick={onLogout}>
             Log out
           </button>

@@ -85,6 +85,14 @@ export default function OverviewPanel({ navigate }) {
         <Stat label="Tenants" value={totals.tenants} />
         <Stat label="Users" value={totals.users} tone="upcoming" />
         <Stat label="Active users" value={totals.active_users} tone="completed" />
+        <button
+          className="admin-stat-button"
+          type="button"
+          title="View the read-only profiles created by owners"
+          onClick={() => navigate('users', { role_name: 'member' })}
+        >
+          <Stat label="Sub-users" value={totals.sub_users} />
+        </button>
         <Stat label="Events" value={totals.events} />
         <Stat label="Upcoming" value={totals.upcoming_events} tone="upcoming" />
         <Stat label="Completed" value={totals.completed_events} tone="completed" />

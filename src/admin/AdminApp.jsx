@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import '../App.css'
 import './admin.css'
+import ActivityPanel from './ActivityPanel'
 import CategoriesPanel from './CategoriesPanel'
 import DatabasePanel from './DatabasePanel'
 import EventsPanel from './EventsPanel'
@@ -15,6 +16,7 @@ const TABS = [
   ['users', 'Users', UsersPanel],
   ['events', 'Events', EventsPanel],
   ['categories', 'Categories', CategoriesPanel],
+  ['activity', 'Activity', ActivityPanel],
   ['database', 'Database', DatabasePanel],
   ['security', 'Security', SecurityPanel],
 ]
@@ -32,7 +34,7 @@ function AdminApp({ onLogout }) {
     <main className="dashboard admin-dashboard">
       <header className="admin-header">
         <div>
-          <h1>Master administration</h1>
+          <h1>Control Admin</h1>
           <p>Monitor and manage every tenant, user and event</p>
         </div>
         <div className="admin-session">

@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import Row, case, func, or_, select
 from sqlalchemy.orm import Session
 
-from app.api.deps import CurrentUser, get_current_user, get_db
+from app.api.deps import Member, get_db, get_member, require_writer
+from app.core import activity
 from app.models import Event, EventType
 from app.schemas.event import (
     EventCreate,
@@ -22,6 +23,12 @@ UPCOMING_STATUSES = ("planned", "active")
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def _track(db: Session, user: Member, action: str, detail: str | None = None) -> None:
+    """Registra las consultas de los sub-usuarios (perfiles `member`) para que el owner las monitoree."""
+    if user.role == "member":
+        activity.record(db, user.tenant_id, user.user_id, action, detail)
 
 
 def _select_events():
@@ -86,7 +93,7 @@ def _get_event_read(db: Session, event_id: uuid.UUID, tenant_id: uuid.UUID) -> E
 
 
 @router.get("/stats", response_model=EventStats)
-def stats(user: CurrentUser = Depends(get_current_user), db: Session = Depends(get_db)):
+def stats(user: Member = Depends(get_member), db: Session = Depends(get_db)):
     row = db.execute(
         select(
             func.count().label("total"),
@@ -94,11 +101,12 @@ def stats(user: CurrentUser = Depends(get_current_user), db: Session = Depends(g
             func.coalesce(func.sum(case((Event.status == "completed", 1), else_=0)), 0).label("completed"),
         ).where(Event.tenant_id == user.tenant_id)
     ).one()
+    _track(db, user, activity.VIEW_DASHBOARD)
     return EventStats(total_events=row.total, upcoming_events=row.upcoming, completed_events=row.completed)
 
 
 @router.get("/overview", response_model=list[MonthlyOverview])
-def overview(user: CurrentUser = Depends(get_current_user), db: Session = Depends(get_db)):
+def overview(user: Member = Depends(get_member), db: Session = Depends(get_db)):
     """Eventos por mes. Minimo: 3 meses atras .. 3 meses adelante; se expande si hay eventos fuera."""
     year = func.year(Event.event_date)
     month = func.month(Event.event_date)
@@ -148,7 +156,7 @@ def _add_months(d: date, n: int) -> date:
 
 
 @router.get("/upcoming", response_model=list[EventRead])
-def upcoming(user: CurrentUser = Depends(get_current_user), db: Session = Depends(get_db)):
+def upcoming(user: Member = Depends(get_member), db: Session = Depends(get_db)):
     # Se excluyen los eventos de dias anteriores. Margen de 24 h porque el "hoy" depende
     # de la zona horaria del usuario; el corte exacto por dia local lo hace el frontend.
     rows = db.execute(
@@ -160,11 +168,12 @@ def upcoming(user: CurrentUser = Depends(get_current_user), db: Session = Depend
         )
         .order_by(Event.event_date.asc())
     ).all()
+    _track(db, user, activity.VIEW_UPCOMING)
     return [_to_read(r) for r in rows]
 
 
 @router.get("/completed", response_model=list[EventRead])
-def completed(user: CurrentUser = Depends(get_current_user), db: Session = Depends(get_db)):
+def completed(user: Member = Depends(get_member), db: Session = Depends(get_db)):
     rows = db.execute(
         _select_events()
         .where(
@@ -173,11 +182,12 @@ def completed(user: CurrentUser = Depends(get_current_user), db: Session = Depen
         )
         .order_by(Event.event_date.desc())
     ).all()
+    _track(db, user, activity.VIEW_COMPLETED)
     return [_to_read(r) for r in rows]
 
 
 @router.get("", response_model=list[EventRead])
-def list_events(user: CurrentUser = Depends(get_current_user), db: Session = Depends(get_db)):
+def list_events(user: Member = Depends(get_member), db: Session = Depends(get_db)):
     rows = db.execute(
         _select_events().where(Event.tenant_id == user.tenant_id).order_by(Event.event_date.desc())
     ).all()
@@ -190,7 +200,7 @@ def list_events(user: CurrentUser = Depends(get_current_user), db: Session = Dep
 @router.post("", response_model=EventRead, status_code=status.HTTP_201_CREATED)
 def create_event(
     body: EventCreate,
-    user: CurrentUser = Depends(get_current_user),
+    user: Member = Depends(require_writer),
     db: Session = Depends(get_db),
 ):
     _check_past_status(body.event_date, body.status)
@@ -213,17 +223,19 @@ def create_event(
 @router.get("/{event_id}", response_model=EventRead)
 def get_event(
     event_id: uuid.UUID,
-    user: CurrentUser = Depends(get_current_user),
+    user: Member = Depends(get_member),
     db: Session = Depends(get_db),
 ):
-    return _get_event_read(db, event_id, user.tenant_id)
+    event = _get_event_read(db, event_id, user.tenant_id)
+    _track(db, user, activity.VIEW_EVENT, event.name)
+    return event
 
 
 @router.put("/{event_id}", response_model=EventRead)
 def update_event(
     event_id: uuid.UUID,
     body: EventUpdate,
-    user: CurrentUser = Depends(get_current_user),
+    user: Member = Depends(require_writer),
     db: Session = Depends(get_db),
 ):
     event = db.scalar(select(Event).where(Event.event_id == event_id, Event.tenant_id == user.tenant_id))
@@ -244,7 +256,7 @@ def update_event(
 @router.delete("/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_event(
     event_id: uuid.UUID,
-    user: CurrentUser = Depends(get_current_user),
+    user: Member = Depends(require_writer),
     db: Session = Depends(get_db),
 ):
     event = db.scalar(select(Event).where(Event.event_id == event_id, Event.tenant_id == user.tenant_id))

@@ -1,14 +1,4 @@
-import { request } from './api'
-
-// Arma "?a=1&b=2" ignorando los valores vacios.
-const query = (params = {}) => {
-  const search = new URLSearchParams()
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== '' && value !== null && value !== undefined) search.set(key, value)
-  })
-  const text = search.toString()
-  return text ? `?${text}` : ''
-}
+import { request, toQuery as query } from './api'
 
 const A = '/api/admin'
 const send = (method, path, body) => request(`${A}${path}`, { method, body })
@@ -26,6 +16,8 @@ export const adminApi = {
   setMemberRole: (tenantId, userId, role_name) =>
     send('PUT', `/tenants/${tenantId}/members/${userId}`, { role_name }),
   removeMember: (tenantId, userId) => send('DELETE', `/tenants/${tenantId}/members/${userId}`),
+
+  activity: (params) => send('GET', `/activity${query(params)}`),
 
   users: (params) => send('GET', `/users${query(params)}`),
   user: (id) => send('GET', `/users/${id}`),

@@ -595,3 +595,60 @@
     align-items: flex-start;
   }
 }
+
+.admin-stack {
+  display: flex;
+  flex-direction: column-reverse;
+  width: 100%;
+  min-height: 3px;
+  overflow: hidden;
+  border-radius: 6px 6px 0 0;
+}
+
+.admin-stack span.views {
+  background: var(--blue);
+}
+
+.admin-stack span.logins {
+  background: var(--green);
+}
+
+.admin-stack span.denied {
+  background: #d65f5f;
+}
+
+.admin-legend {
+  display: flex;
+  gap: 16px;
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.admin-legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  border-radius: 3px;
+}
+
+.admin-stat-button {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-stat-button .stat-card {
+  height: 100%;
+}
+
+.admin-stat-button:hover .stat-card,
+.admin-stat-button:focus-visible .stat-card {
+  border-color: var(--blue-bright);
+}
