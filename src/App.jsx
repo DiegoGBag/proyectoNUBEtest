@@ -98,9 +98,16 @@ function EventsApp({ onLogout }) {
 
   const loadDashboard = useCallback(async () => {
     try {
-      const [stats, monthly] = await Promise.all([getStats(), getOverview()])
+      const [stats, monthly, upcoming, completed] = await Promise.all([
+        getStats(),
+        getOverview(),
+        getUpcomingEvents(),
+        getCompletedEvents(),
+      ])
       setStatistics(stats)
       setOverview(monthly)
+      setUpcomingEvents(upcoming.filter((savedEvent) => !isPastDate(savedEvent.date)))
+      setCompletedEvents(completed)
       setError('')
     } catch (requestError) {
       setError(requestError.message)
@@ -499,27 +506,52 @@ function EventsApp({ onLogout }) {
     )
   }
 
+  const recentCompleted = [...completedEvents]
+    .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+    .slice(0, 4)
+  const nextUpcoming = [...upcomingEvents]
+    .sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`))
+    .slice(0, 4)
+
   return (
-    <main className="dashboard">
-      <header className="page-header">
-        <div className="header-top">
+    <div className="user-shell">
+      <aside className="user-sidebar">
+        <p className="user-tagline">
+          Plan Every Event
+          <br />
+          With <strong>Confidence</strong>
+        </p>
+      </aside>
+
+      <main className="user-main">
+        <header className="user-header">
           <div>
             <h1>Events</h1>
             <p>Create and manage your events in one place</p>
           </div>
 
-          {currentUser && (
-            <div className="user-info" title={currentUser.email}>
-              <span className="user-name">{currentUser.full_name}</span>
-              {currentUser.tenant_name && (
-                <span className="user-tenant">{currentUser.tenant_name}</span>
-              )}
-              <span className="user-tenant-id" title="Tenant ID">
-                {currentUser.tenant_id}
-              </span>
-            </div>
-          )}
-        </div>
+          <div className="user-session">
+            {currentUser && (
+              <div className="user-info" title={currentUser.email}>
+                <span className="user-avatar" aria-hidden="true">
+                  {currentUser.full_name?.charAt(0).toUpperCase()}
+                </span>
+                <div className="user-details">
+                  <span className="user-name">{currentUser.full_name}</span>
+                  {currentUser.tenant_name && (
+                    <span className="user-tenant">{currentUser.tenant_name}</span>
+                  )}
+                  <span className="user-tenant-id" title="Tenant ID">
+                    {currentUser.tenant_id}
+                  </span>
+                </div>
+              </div>
+            )}
+            <button className="cancel-button user-logout" type="button" onClick={onLogout}>
+              Log out
+            </button>
+          </div>
+        </header>
 
         <div className="header-actions">
           {canWrite && (
@@ -540,40 +572,106 @@ function EventsApp({ onLogout }) {
               Team
             </button>
           )}
-          <button className="cancel-button" type="button" onClick={onLogout}>
-            Log out
-          </button>
         </div>
-      </header>
 
-      {error && (
-        <p className="form-error" role="alert">
-          {error}
-        </p>
+        {error && (
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        )}
+
+        <section className="statistics" aria-label="Event statistics">
+          {[
+            ['Total events', statistics.total, 'total', false, 'users'],
+            ['Upcoming', statistics.upcoming, 'upcoming', true, 'calendar'],
+            ['Completed', statistics.completed, 'completed', true, 'calendar'],
+          ].map(([label, value, tone, isInteractive, icon]) => (
+            <button
+              className={`${isInteractive ? 'stat-card interactive' : 'stat-card'} ${tone}`}
+              key={label}
+              type="button"
+              onClick={
+                label === 'Upcoming' ? openUpcomingEvents : openCompletedEvents
+              }
+            >
+              <h2>{label}</h2>
+              <StatIcon name={icon} />
+              <p className={`stat-value ${tone}`}>{value}</p>
+            </button>
+          ))}
+        </section>
+
+        <div className="home-grid">
+          <StatisticsChart overview={overview} />
+
+          <div className="home-side">
+            <section className="home-card">
+              <h2>Recent Event Activity</h2>
+              <ul className="timeline">
+                {recentCompleted.length === 0 && <li className="timeline-empty">No activity yet</li>}
+                {recentCompleted.map((savedEvent) => (
+                  <li key={savedEvent.id}>
+                    <span className="timeline-dot done" aria-hidden="true" />
+                    <div>
+                      <strong>{savedEvent.name}</strong>
+                      <small>Completed · {savedEvent.location}</small>
+                    </div>
+                    <time>{formatEventDate(savedEvent.date)}</time>
+                  </li>
+                ))}
+              </ul>
+            </section>
+
+            <section className="home-card">
+              <h2>Upcoming Schedules / Milestones</h2>
+              <ul className="timeline">
+                {nextUpcoming.length === 0 && <li className="timeline-empty">Nothing scheduled</li>}
+                {nextUpcoming.map((savedEvent) => (
+                  <li key={savedEvent.id}>
+                    <span className="timeline-dot upcoming" aria-hidden="true" />
+                    <div>
+                      <strong>{savedEvent.name}</strong>
+                      <small>{savedEvent.location}</small>
+                    </div>
+                    <time>
+                      {formatEventDate(savedEvent.date)}
+                      {savedEvent.time ? ` · ${savedEvent.time}` : ''}
+                    </time>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          </div>
+        </div>
+      </main>
+    </div>
+  )
+}
+
+function StatIcon({ name }) {
+  return (
+    <svg
+      className="stat-icon"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {name === 'users' ? (
+        <>
+          <circle cx="9" cy="8" r="3.5" />
+          <path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6M16 4.8a3.5 3.5 0 010 6.4M18 14.4c2 .7 3.5 2.6 3.5 5.6" />
+        </>
+      ) : (
+        <>
+          <rect x="3" y="5" width="18" height="16" rx="2" />
+          <path d="M3 10h18M8 3v4M16 3v4" />
+        </>
       )}
-
-      <section className="statistics" aria-label="Event statistics">
-        {[
-          ['Total events', statistics.total, 'total', false],
-          ['Upcoming', statistics.upcoming, 'upcoming', true],
-          ['Completed', statistics.completed, 'completed', true],
-        ].map(([label, value, tone, isInteractive]) => (
-          <button
-            className={isInteractive ? 'stat-card interactive' : 'stat-card'}
-            key={label}
-            type="button"
-            onClick={
-              label === 'Upcoming' ? openUpcomingEvents : openCompletedEvents
-            }
-          >
-            <h2>{label}</h2>
-            <p className={`stat-value ${tone}`}>{value}</p>
-          </button>
-        ))}
-      </section>
-
-      <StatisticsChart overview={overview} />
-    </main>
+    </svg>
   )
 }
 
