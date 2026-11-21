@@ -117,11 +117,10 @@ export default function OverviewPanel({ navigate }) {
           )}
         </div>
         <div className="admin-card">
-          <h3>Events by category</h3>
+          <h3>Events</h3>
+          <h4 className="admin-subtitle">By category</h4>
           <BarList items={data.events_by_category} labelKey="category" valueKey="count" />
-        </div>
-        <div className="admin-card">
-          <h3>Events by status</h3>
+          <h4 className="admin-subtitle">By status</h4>
           <BarList items={data.events_by_status} labelKey="status" valueKey="count" tone="green" />
         </div>
         <div className="admin-card">
