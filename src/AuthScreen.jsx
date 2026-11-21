@@ -35,7 +35,7 @@ function AuthScreen({ onAuthenticated }) {
   return (
     <div className="auth-split">
       <section className="auth-hero">
-        <p className="auth-hero-brand">Event Manager</p>
+        <p className="auth-hero-brand">Events Manager</p>
         <h2 className="auth-hero-title">
           Plan Every Event
           <br />
@@ -50,7 +50,7 @@ function AuthScreen({ onAuthenticated }) {
         <p>
           {isRegister
             ? 'Set up your organization and your first user'
-            : 'Welcome back to Events'}
+            : 'Welcome back to Events Manager'}
         </p>
       </header>
 
