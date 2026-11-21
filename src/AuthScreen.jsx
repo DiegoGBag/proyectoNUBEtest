@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { login, register } from './api'
+import HalftoneBackground from './HalftoneBackground'
 
 const emptyForm = { fullName: '', tenantName: '', email: '', password: '' }
 
@@ -33,7 +34,20 @@ function AuthScreen({ onAuthenticated }) {
   }
 
   return (
-    <main className="dashboard create-page">
+    <div className="auth-split">
+      <section className="auth-hero">
+        <HalftoneBackground />
+        <div className="auth-hero-content">
+          <h2 className="auth-hero-title">Events</h2>
+          <p className="auth-hero-text">
+            Plan, publish and track every event of your organization from one
+            simple, secure workspace. Built for teams that move fast.
+          </p>
+        </div>
+      </section>
+
+      <main className="auth-panel">
+        <div className="auth-panel-inner">
       <header className="page-header form-header">
         <h1>{isRegister ? 'Create account' : 'Sign in'}</h1>
         <p>
@@ -105,7 +119,9 @@ function AuthScreen({ onAuthenticated }) {
           </button>
         </div>
       </form>
-    </main>
+        </div>
+      </main>
+    </div>
   )
 }
 
