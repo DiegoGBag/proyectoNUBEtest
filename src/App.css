@@ -1171,3 +1171,30 @@
   margin: 0;
   text-align: center;
 }
+
+/* ---------- Auth: hero card sits inside one big card ---------- */
+.auth-split {
+  gap: 0;
+  min-height: calc(100svh - 32px);
+  margin: 16px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 36px;
+  background: #000;
+}
+
+.auth-split .auth-hero {
+  border-radius: 26px;
+}
+
+.auth-split .auth-panel {
+  border-radius: 0;
+  background: transparent;
+}
+
+@media (max-width: 800px) {
+  .auth-split {
+    margin: 8px;
+    min-height: calc(100svh - 16px);
+  }
+}
