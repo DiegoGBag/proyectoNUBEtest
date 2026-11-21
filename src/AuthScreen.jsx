@@ -54,7 +54,7 @@ function AuthScreen({ onAuthenticated }) {
         </p>
       </header>
 
-      <form className="event-form" onSubmit={submit}>
+      <form className="event-form auth-form" onSubmit={submit}>
         {isRegister && (
           <>
             <label>
@@ -107,13 +107,16 @@ function AuthScreen({ onAuthenticated }) {
           </p>
         )}
 
-        <div className="form-actions">
-          <button className="cancel-button" type="button" onClick={switchMode}>
-            {isRegister ? 'I already have an account' : 'Create an account'}
-          </button>
+        <div className="auth-actions">
           <button className="create-event" type="submit" disabled={isSubmitting}>
             {isSubmitting ? 'Please wait…' : isRegister ? 'Create account' : 'Sign in'}
           </button>
+          <p className="auth-switch">
+            {isRegister ? 'Already have an account?' : 'Not a member?'}{' '}
+            <button type="button" onClick={switchMode}>
+              {isRegister ? 'Sign in' : 'Create an account'}
+            </button>
+          </p>
         </div>
       </form>
         </div>
