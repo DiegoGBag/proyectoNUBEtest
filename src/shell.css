@@ -1,0 +1,556 @@
+/* Layout y estilo comunes a TODO el software (panel de usuario y de administrador). */
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  min-height: 100svh;
+  background: var(--page-background);
+  color: var(--heading);
+}
+
+/* ---------- Sidebar ---------- */
+.app-sidebar {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100svh;
+  box-sizing: border-box;
+  padding: 28px 16px;
+  background:
+    radial-gradient(ellipse 120% 40% at 85% 12%, rgba(130, 110, 255, 0.75), transparent 70%),
+    radial-gradient(ellipse 90% 35% at 15% 45%, rgba(230, 130, 90, 0.45), transparent 70%),
+    radial-gradient(ellipse 100% 30% at 40% 70%, rgba(40, 120, 150, 0.4), transparent 70%),
+    #0a0612;
+}
+
+.app-brand {
+  margin: 0 8px 36px;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.app-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.app-nav button {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.78);
+  font: inherit;
+  font-size: 17px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+.app-nav button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.app-nav button.active {
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: inset 3px 0 0 var(--blue-bright);
+  color: #fff;
+}
+
+.app-icon {
+  width: 22px;
+  height: 22px;
+  flex: none;
+}
+
+.app-tagline {
+  margin: auto 8px 0;
+  font-size: 26px;
+  font-weight: 300;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.app-tagline strong {
+  font-weight: 800;
+}
+
+/* ---------- Main + header ---------- */
+.app-main {
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 36px 40px 64px;
+}
+
+.app-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin-bottom: 28px;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: clamp(32px, 3.4vw, 44px);
+  font-weight: 400;
+  line-height: 1.1;
+  letter-spacing: -1px;
+}
+
+.app-header p {
+  max-width: 620px;
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+.app-session {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.app-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.app-avatar {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7b6cf0, #e08a5f);
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.app-user-details {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+}
+
+.app-user-details strong {
+  font-size: 18px;
+}
+
+.app-user-details span {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.app-user-details span.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+.app-logout {
+  min-width: 0;
+  padding: 14px 28px;
+  border-radius: 14px;
+  font-size: 17px;
+}
+
+/* ---------- Shared content styling (everything inside .app-main) ---------- */
+.app-main .create-event,
+.app-main .cancel-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-width: 0;
+  margin-top: 0;
+  padding: 16px 28px;
+  border-radius: 14px;
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.app-main .create-event .app-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.app-main .header-actions {
+  justify-content: flex-start;
+  margin-top: 0;
+  gap: 12px;
+}
+
+.app-main .read-only-badge {
+  padding: 0 20px;
+  border-radius: 14px;
+  font-size: 16px;
+}
+
+.app-main .statistics {
+  gap: 20px;
+  margin-top: 24px;
+}
+
+.app-main .stat-card {
+  position: relative;
+  min-height: 0;
+  padding: 22px 24px;
+  border-radius: 18px;
+}
+
+.app-main .stat-card h2 {
+  font-size: 20px;
+}
+
+.app-main .stat-value {
+  margin-top: 8px;
+  font-size: 40px;
+}
+
+.stat-icon {
+  position: absolute;
+  top: 22px;
+  right: 22px;
+  width: 22px;
+  height: 22px;
+}
+
+.stat-card.total {
+  border-color: rgba(224, 138, 95, 0.55);
+  background: linear-gradient(135deg, rgba(224, 138, 95, 0.14), var(--card-background) 60%);
+}
+
+.stat-card.total .stat-icon {
+  color: #c58cd9;
+}
+
+.stat-card.upcoming {
+  border-color: rgba(110, 120, 255, 0.55);
+  background: linear-gradient(135deg, rgba(110, 120, 255, 0.2), var(--card-background) 65%);
+}
+
+.stat-card.upcoming .stat-icon {
+  color: var(--blue-bright);
+}
+
+.stat-card.completed {
+  border-color: rgba(63, 169, 106, 0.55);
+  background: linear-gradient(135deg, rgba(63, 169, 106, 0.14), var(--card-background) 60%);
+}
+
+.stat-card.completed .stat-icon {
+  color: var(--green-bright);
+}
+
+.home-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 20px;
+  margin-top: 20px;
+  align-items: start;
+}
+
+.home-grid .statistics-chart {
+  margin-top: 0;
+  border-radius: 20px;
+}
+
+.home-side {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.home-card {
+  padding: 22px 24px;
+  border: 2px solid var(--border);
+  border-radius: 20px;
+  background: var(--card-background);
+}
+
+.home-card h2 {
+  margin: 0 0 18px;
+  font-size: 21px;
+  font-weight: 500;
+}
+
+.timeline {
+  display: grid;
+  gap: 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.timeline li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 14px 1fr auto;
+  align-items: start;
+  gap: 14px;
+}
+
+.timeline li:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  top: 18px;
+  bottom: -18px;
+  left: 6px;
+  width: 2px;
+  background: #3a3a3a;
+}
+
+.timeline-dot {
+  width: 14px;
+  height: 14px;
+  margin-top: 3px;
+  border-radius: 50%;
+}
+
+.timeline-dot.done {
+  background: #8a8a8a;
+}
+
+.timeline-dot.upcoming {
+  background: var(--blue-bright);
+}
+
+.timeline strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.timeline small,
+.timeline time {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.timeline time {
+  white-space: nowrap;
+}
+
+.timeline .timeline-empty {
+  display: block;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.timeline .timeline-empty::before {
+  display: none;
+}
+
+/* Upcoming events (columns) */
+.app-main .event-columns {
+  gap: 20px;
+  margin-top: 0;
+}
+
+.app-main .event-column {
+  min-height: 0;
+  border-radius: 20px;
+}
+
+.app-main .event-column > header {
+  padding: 18px 20px;
+}
+
+.app-main .event-column h2 {
+  font-size: 19px;
+}
+
+.app-main .event-column > header span {
+  background: rgba(110, 120, 255, 0.2);
+}
+
+.app-main .saved-event {
+  padding: 16px;
+  border-radius: 14px;
+}
+
+.app-main .saved-event h3 {
+  margin-bottom: 8px;
+  font-size: 17px;
+}
+
+.app-main .saved-event p {
+  font-size: 14px;
+}
+
+.app-main .event-status {
+  background: rgba(110, 120, 255, 0.2);
+  font-size: 12px;
+}
+
+/* Completed events (table) */
+.app-main .completed-events {
+  margin-top: 0;
+  border-radius: 20px;
+}
+
+.app-main .completed-table-row {
+  padding: 18px 24px;
+  font-size: 15px;
+}
+
+.app-main .completed-table-row.table-header {
+  font-size: 12.5px;
+}
+
+/* Create event form */
+.app-main .event-form {
+  gap: 24px;
+  max-width: 860px;
+  margin-top: 0;
+  padding: 36px 40px;
+  border-radius: 20px;
+}
+
+.app-main .event-form label,
+.app-main .event-form legend {
+  font-size: 16px;
+}
+
+.app-main .event-form label {
+  gap: 10px;
+}
+
+.app-main .event-form input:not([type='radio']):not([type='file']),
+.app-main .event-form select,
+.app-main .event-form textarea {
+  padding: 14px 18px;
+  border-radius: 12px;
+  font-size: 16px;
+}
+
+.app-main .event-form input::placeholder,
+.app-main .event-form textarea::placeholder {
+  color: #7d7d7d;
+}
+
+.app-main .upload-area {
+  min-height: 170px;
+  border-width: 2px;
+  border-radius: 14px;
+}
+
+.app-main .upload-area strong {
+  font-size: 16px;
+}
+
+.app-main .upload-area small {
+  font-size: 14px;
+}
+
+.app-main .upload-icon {
+  width: 34px;
+  height: 34px;
+}
+
+.app-main .upload-icon .app-icon {
+  width: 34px;
+  height: 34px;
+}
+
+.app-main .status-options {
+  gap: 24px;
+  margin-top: 12px;
+}
+
+.app-main .status-options label {
+  font-size: 16px;
+}
+
+.app-main .form-hint {
+  font-size: 14px;
+}
+
+.app-main .form-actions {
+  gap: 12px;
+}
+
+.app-main .form-actions .create-event {
+  min-width: 200px;
+}
+
+.app-main .back-button {
+  margin-bottom: 20px;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1100px) {
+  .home-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .app-sidebar {
+    position: static;
+    height: auto;
+    padding: 20px 16px;
+  }
+
+  .app-brand {
+    margin-bottom: 16px;
+  }
+
+  .app-nav {
+    flex-direction: row;
+    overflow-x: auto;
+  }
+
+  .app-nav button {
+    white-space: nowrap;
+  }
+
+  .app-tagline {
+    display: none;
+  }
+
+  .app-main {
+    padding: 24px 16px 48px;
+  }
+
+  .app-main .statistics {
+    grid-template-columns: 1fr;
+  }
+
+  .app-main .event-form {
+    padding: 24px 20px;
+  }
+
+  .app-main .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .app-main .form-actions {
+    flex-direction: column-reverse;
+  }
+
+  .app-main .form-actions .create-event,
+  .app-main .form-actions .cancel-button {
+    width: 100%;
+  }
+}

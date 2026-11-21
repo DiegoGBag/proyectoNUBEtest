@@ -2,6 +2,7 @@ import { useState } from 'react'
 import './App.css'
 import './admin/admin.css'
 import { teamApi } from './api'
+import { Icon } from './Shell'
 import {
   ACTION_OPTIONS,
   ActivityTable,
@@ -20,7 +21,7 @@ import {
 const REFRESH_MS = 30000
 
 // Panel del owner: crea perfiles de solo lectura para su gente y monitorea su actividad.
-function TeamPanel({ organization, onBack }) {
+function TeamPanel() {
   const [live, setLive] = useState(true)
   const [form, setForm] = useState(null) // 'new' | member
   const [userFilter, setUserFilter] = useState('')
@@ -101,29 +102,12 @@ function TeamPanel({ organization, onBack }) {
   ]
 
   return (
-    <main className="dashboard admin-dashboard">
-      <header className="admin-header">
-        <div>
-          <button className="back-button" type="button" onClick={onBack}>
-            ← Back to dashboard
-          </button>
-          <h1>Team</h1>
-          <p>
-            Read-only profiles for the people in {organization || 'your organization'}. They can view events but
-            never change them.
-          </p>
-        </div>
-        <div className="admin-session">
-          <button className="create-event" type="button" onClick={() => setForm('new')}>
-            <span className="plus-icon" aria-hidden="true">
-              +
-            </span>
-            New sub-user
-          </button>
-        </div>
-      </header>
-
-      <div className="admin-toolbar" style={{ marginTop: 24 }}>
+    <>
+      <div className="admin-toolbar">
+        <button className="create-event" type="button" onClick={() => setForm('new')}>
+          <Icon name="create" />
+          New sub-user
+        </button>
         <span className="spacer" />
         <label className="admin-live">
           <input type="checkbox" checked={live} onChange={(e) => setLive(e.target.checked)} />
@@ -233,7 +217,7 @@ function TeamPanel({ organization, onBack }) {
           }}
         />
       )}
-    </main>
+    </>
   )
 }
 

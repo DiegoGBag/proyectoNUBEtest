@@ -1,6 +1,7 @@
 import { Suspense, lazy, useCallback, useEffect, useState } from 'react'
 import './App.css'
 import AuthScreen from './AuthScreen'
+import Shell, { Icon } from './Shell'
 import {
   clearToken,
   createEvent as createEventRequest,
@@ -73,9 +74,8 @@ function App() {
 }
 
 function EventsApp({ onLogout }) {
-  const [isCreating, setIsCreating] = useState(false)
-  const [isViewingUpcoming, setIsViewingUpcoming] = useState(false)
-  const [isViewingCompleted, setIsViewingCompleted] = useState(false)
+  // Una sola pagina activa: 'home' | 'upcoming' | 'completed' | 'create' | 'team'
+  const [page, setPage] = useState('home')
   const [statistics, setStatistics] = useState(initialStatistics)
   const [overview, setOverview] = useState([])
   const [event, setEvent] = useState(emptyEvent)
@@ -84,7 +84,6 @@ function EventsApp({ onLogout }) {
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
   const [currentUser, setCurrentUser] = useState(null)
-  const [isViewingTeam, setIsViewingTeam] = useState(false)
 
   // Los perfiles `member` (sub-usuarios) son de solo lectura; la API lo exige igualmente.
   const canWrite = Boolean(currentUser) && currentUser.role !== 'member'
@@ -106,6 +105,7 @@ function EventsApp({ onLogout }) {
       ])
       setStatistics(stats)
       setOverview(monthly)
+      // Solo eventos de hoy en adelante (dia local); los de dias anteriores ya no son "upcoming"
       setUpcomingEvents(upcoming.filter((savedEvent) => !isPastDate(savedEvent.date)))
       setCompletedEvents(completed)
       setError('')
@@ -116,7 +116,6 @@ function EventsApp({ onLogout }) {
 
   const loadUpcoming = useCallback(async () => {
     try {
-      // Solo eventos de hoy en adelante (dia local); los de dias anteriores ya no son "upcoming"
       const events = await getUpcomingEvents()
       setUpcomingEvents(events.filter((savedEvent) => !isPastDate(savedEvent.date)))
       setError('')
@@ -139,12 +138,9 @@ function EventsApp({ onLogout }) {
   }, [loadDashboard])
 
   useEffect(() => {
-    if (isViewingUpcoming) loadUpcoming()
-  }, [isViewingUpcoming, loadUpcoming])
-
-  useEffect(() => {
-    if (isViewingCompleted) loadCompleted()
-  }, [isViewingCompleted, loadCompleted])
+    if (page === 'upcoming') loadUpcoming()
+    if (page === 'completed') loadCompleted()
+  }, [page, loadUpcoming, loadCompleted])
 
   const updateEvent = (field, value) => {
     setEvent((currentEvent) => {
@@ -157,18 +153,10 @@ function EventsApp({ onLogout }) {
 
   const isEventInPast = isPastDate(event.date)
 
-  const openCreateForm = () => {
-    setEvent(emptyEvent)
+  const goTo = (nextPage) => {
     setError('')
-    setIsViewingUpcoming(false)
-    setIsViewingCompleted(false)
-    setIsCreating(true)
-  }
-
-  const cancelCreate = () => {
-    setIsCreating(false)
-    setError('')
-    setEvent(emptyEvent)
+    if (nextPage === 'create') setEvent(emptyEvent)
+    setPage(nextPage)
   }
 
   const createEvent = async (formEvent) => {
@@ -179,24 +167,14 @@ function EventsApp({ onLogout }) {
     try {
       // Nota: la foto todavia no se envia; la subida a S3 es un paso posterior.
       await createEventRequest(event)
-      setIsCreating(false)
       setEvent(emptyEvent)
       await loadDashboard()
+      setPage('home')
     } catch (requestError) {
       setError(requestError.message)
     } finally {
       setIsSaving(false)
     }
-  }
-
-  const openUpcomingEvents = () => {
-    setIsViewingUpcoming(true)
-    setIsViewingCompleted(false)
-  }
-
-  const openCompletedEvents = () => {
-    setIsViewingCompleted(true)
-    setIsViewingUpcoming(false)
   }
 
   const formatEventDate = (date) => {
@@ -207,50 +185,54 @@ function EventsApp({ onLogout }) {
     }).format(new Date(`${date}T00:00:00`))
   }
 
-  if (isViewingTeam && isOwner) {
-    return (
-      <Suspense fallback={<main className="dashboard">Loading…</main>}>
-        <TeamPanel organization={currentUser.tenant_name} onBack={() => setIsViewingTeam(false)} />
+  const nav = [
+    { id: 'home', label: 'Dashboard', icon: 'overview' },
+    { id: 'upcoming', label: 'Upcoming', icon: 'upcoming' },
+    { id: 'completed', label: 'Completed', icon: 'completed' },
+    ...(canWrite ? [{ id: 'create', label: 'Create event', icon: 'create' }] : []),
+    ...(isOwner ? [{ id: 'team', label: 'Team', icon: 'users' }] : []),
+  ]
+
+  const titles = {
+    home: ['Events', 'Create and manage your events in one place'],
+    upcoming: ['Upcoming events', 'All your planned and active events, organized by type'],
+    completed: ['Completed events', 'Review the details and results of your past events'],
+    create: ['Create event', 'Fill in the details to get started'],
+    team: [
+      'Team',
+      `Read-only profiles for the people in ${currentUser?.tenant_name || 'your organization'}. They can view events but never change them.`,
+    ],
+  }
+  const [title, subtitle] = titles[page]
+
+  const recentCompleted = [...completedEvents]
+    .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+    .slice(0, 4)
+  const nextUpcoming = [...upcomingEvents]
+    .sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`))
+    .slice(0, 4)
+
+  const errorMessage = error && (
+    <p className="form-error" role="alert">
+      {error}
+    </p>
+  )
+
+  let content = null
+
+  if (page === 'team' && isOwner) {
+    content = (
+      <Suspense fallback={<p className="admin-muted">Loading…</p>}>
+        <TeamPanel />
       </Suspense>
     )
-  }
-
-  if (isViewingUpcoming) {
-    return (
-      <main className="dashboard events-page">
-        <header className="page-header events-list-header">
-          <div>
-            <button
-              className="back-button"
-              type="button"
-              onClick={() => setIsViewingUpcoming(false)}
-            >
-              ← Back to dashboard
-            </button>
-            <h1>Upcoming events</h1>
-            <p>All your planned and active events, organized by type</p>
-          </div>
-          {canWrite && (
-            <button className="create-event" type="button" onClick={openCreateForm}>
-              <span className="plus-icon" aria-hidden="true">
-                +
-              </span>
-              Create event
-            </button>
-          )}
-        </header>
-
-        {error && (
-          <p className="form-error" role="alert">
-            {error}
-          </p>
-        )}
-
+  } else if (page === 'upcoming') {
+    content = (
+      <>
+        {errorMessage}
         <section className="event-columns" aria-label="Upcoming events by type">
           {eventTypes.map(([type, label]) => {
-            const typeEvents = upcomingEvents.filter(
-              (savedEvent) => savedEvent.type === type,
-            )
+            const typeEvents = upcomingEvents.filter((savedEvent) => savedEvent.type === type)
 
             return (
               <article className="event-column" key={type}>
@@ -265,7 +247,9 @@ function EventsApp({ onLogout }) {
                     typeEvents.map((savedEvent) => (
                       <article className="saved-event" key={savedEvent.id}>
                         <h3>{savedEvent.name}</h3>
-                        <p>{formatEventDate(savedEvent.date)} · {savedEvent.time}</p>
+                        <p>
+                          {formatEventDate(savedEvent.date)} · {savedEvent.time}
+                        </p>
                         <p>{savedEvent.location}</p>
                         <span className={`event-status ${savedEvent.status}`}>
                           {savedEvent.status}
@@ -278,33 +262,12 @@ function EventsApp({ onLogout }) {
             )
           })}
         </section>
-      </main>
+      </>
     )
-  }
-
-  if (isViewingCompleted) {
-    return (
-      <main className="dashboard events-page">
-        <header className="page-header events-list-header">
-          <div>
-            <button
-              className="back-button"
-              type="button"
-              onClick={() => setIsViewingCompleted(false)}
-            >
-              ← Back to dashboard
-            </button>
-            <h1>Completed events</h1>
-            <p>Review the details and results of your past events</p>
-          </div>
-        </header>
-
-        {error && (
-          <p className="form-error" role="alert">
-            {error}
-          </p>
-        )}
-
+  } else if (page === 'completed') {
+    content = (
+      <>
+        {errorMessage}
         <section className="completed-events" aria-label="Completed event details">
           <div className="completed-table" role="table">
             <div className="completed-table-row table-header" role="row">
@@ -336,30 +299,23 @@ function EventsApp({ onLogout }) {
             )}
           </div>
         </section>
-      </main>
+      </>
     )
-  }
+  } else if (page === 'create' && canWrite) {
+    content = (
+      <form className="event-form" onSubmit={createEvent}>
+        <label>
+          Event name
+          <input
+            required
+            type="text"
+            placeholder="My awesome event"
+            value={event.name}
+            onChange={(formEvent) => updateEvent('name', formEvent.target.value)}
+          />
+        </label>
 
-  if (isCreating) {
-    return (
-      <main className="dashboard create-page">
-        <header className="page-header form-header">
-          <h1>Create event</h1>
-          <p>Fill in the details to get started</p>
-        </header>
-
-        <form className="event-form" onSubmit={createEvent}>
-          <label>
-            Event name
-            <input
-              required
-              type="text"
-              placeholder="My awesome event"
-              value={event.name}
-              onChange={(formEvent) => updateEvent('name', formEvent.target.value)}
-            />
-          </label>
-
+        <div className="form-row">
           <label>
             Event type
             <select
@@ -368,197 +324,129 @@ function EventsApp({ onLogout }) {
               onChange={(formEvent) => updateEvent('type', formEvent.target.value)}
             >
               <option value="">Select an event type</option>
-              <option value="conference">Conference</option>
-              <option value="business">Business</option>
-              <option value="social">Social</option>
-              <option value="workshop">Workshop</option>
+              {eventTypes.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
             </select>
           </label>
-
-          <div className="form-row">
-            <label>
-              Date
-              <input
-                required
-                type="date"
-                value={event.date}
-                onChange={(formEvent) => updateEvent('date', formEvent.target.value)}
-              />
-            </label>
-            <label>
-              Time
-              <input
-                required
-                type="time"
-                value={event.time}
-                onChange={(formEvent) => updateEvent('time', formEvent.target.value)}
-              />
-            </label>
-          </div>
-
-          <label>
-            Location
-            <input
-              required
-              type="text"
-              placeholder="Event venue or address"
-              value={event.location}
-              onChange={(formEvent) =>
-                updateEvent('location', formEvent.target.value)
-              }
-            />
-          </label>
-
-          <label>
-            Event photo
-            <span className="upload-area">
-              <input
-                className="file-input"
-                type="file"
-                accept=".jpg,.jpeg,.png,.gif"
-                onChange={(formEvent) =>
-                  updateEvent('photo', formEvent.target.files[0] || null)
-                }
-              />
-              <span className="upload-icon" aria-hidden="true">
-                □
-              </span>
-              <strong>
-                {event.photo ? event.photo.name : 'Drop photo here or click to upload'}
-              </strong>
-              <small>JPG, PNG or GIF (max 5MB)</small>
-            </span>
-          </label>
-
-          <label>
-            Description
-            <textarea
-              rows="4"
-              placeholder="Tell people about your event..."
-              value={event.description}
-              onChange={(formEvent) =>
-                updateEvent('description', formEvent.target.value)
-              }
-            />
-          </label>
-
           <label>
             Expected attendees
             <input
               min="0"
               type="number"
               value={event.attendees}
-              onChange={(formEvent) =>
-                updateEvent('attendees', formEvent.target.value)
-              }
+              onChange={(formEvent) => updateEvent('attendees', formEvent.target.value)}
             />
           </label>
+        </div>
 
-          <fieldset>
-            <legend>Status</legend>
-            <div className="status-options">
-              {[
-                ['planned', 'Planned'],
-                ['active', 'Active'],
-                ['completed', 'Completed'],
-              ].map(([value, label]) => (
-                <label key={value}>
-                  <input
-                    type="radio"
-                    name="status"
-                    value={value}
-                    checked={event.status === value}
-                    disabled={isEventInPast && value !== 'completed'}
-                    onChange={(formEvent) =>
-                      updateEvent('status', formEvent.target.value)
-                    }
-                  />
-                  {label}
-                </label>
-              ))}
-            </div>
-            {isEventInPast && (
-              <p className="form-hint">
-                Events with a past date can only be marked as completed.
-              </p>
-            )}
-          </fieldset>
+        <div className="form-row">
+          <label>
+            Date
+            <input
+              required
+              type="date"
+              value={event.date}
+              onChange={(formEvent) => updateEvent('date', formEvent.target.value)}
+            />
+          </label>
+          <label>
+            Time
+            <input
+              required
+              type="time"
+              value={event.time}
+              onChange={(formEvent) => updateEvent('time', formEvent.target.value)}
+            />
+          </label>
+        </div>
 
-          {error && (
-            <p className="form-error" role="alert">
-              {error}
-            </p>
+        <label>
+          Location
+          <input
+            required
+            type="text"
+            placeholder="Event venue or address"
+            value={event.location}
+            onChange={(formEvent) => updateEvent('location', formEvent.target.value)}
+          />
+        </label>
+
+        <label>
+          Event photo
+          <span className="upload-area">
+            <input
+              className="file-input"
+              type="file"
+              accept=".jpg,.jpeg,.png,.gif"
+              onChange={(formEvent) => updateEvent('photo', formEvent.target.files[0] || null)}
+            />
+            <span className="upload-icon" aria-hidden="true">
+              <Icon name="upload" />
+            </span>
+            <strong>{event.photo ? event.photo.name : 'Drop photo here or click to upload'}</strong>
+            <small>JPG, PNG or GIF (max 5MB)</small>
+          </span>
+        </label>
+
+        <label>
+          Description
+          <textarea
+            rows="4"
+            placeholder="Tell people about your event..."
+            value={event.description}
+            onChange={(formEvent) => updateEvent('description', formEvent.target.value)}
+          />
+        </label>
+
+        <fieldset>
+          <legend>Status</legend>
+          <div className="status-options">
+            {[
+              ['planned', 'Planned'],
+              ['active', 'Active'],
+              ['completed', 'Completed'],
+            ].map(([value, label]) => (
+              <label key={value}>
+                <input
+                  type="radio"
+                  name="status"
+                  value={value}
+                  checked={event.status === value}
+                  disabled={isEventInPast && value !== 'completed'}
+                  onChange={(formEvent) => updateEvent('status', formEvent.target.value)}
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+          {isEventInPast && (
+            <p className="form-hint">Events with a past date can only be marked as completed.</p>
           )}
+        </fieldset>
 
-          <div className="form-actions">
-            <button className="cancel-button" type="button" onClick={cancelCreate}>
-              Cancel
-            </button>
-            <button className="create-event" type="submit" disabled={isSaving}>
-              <span className="plus-icon" aria-hidden="true">
-                +
-              </span>
-              {isSaving ? 'Saving…' : 'Create event'}
-            </button>
-          </div>
-        </form>
-      </main>
+        {errorMessage}
+
+        <div className="form-actions">
+          <button className="cancel-button" type="button" onClick={() => goTo('home')}>
+            Cancel
+          </button>
+          <button className="create-event" type="submit" disabled={isSaving}>
+            <Icon name="create" />
+            {isSaving ? 'Saving…' : 'Create event'}
+          </button>
+        </div>
+      </form>
     )
-  }
-
-  const recentCompleted = [...completedEvents]
-    .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
-    .slice(0, 4)
-  const nextUpcoming = [...upcomingEvents]
-    .sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`))
-    .slice(0, 4)
-
-  return (
-    <div className="user-shell">
-      <aside className="user-sidebar">
-        <p className="user-tagline">
-          Plan Every Event
-          <br />
-          With <strong>Confidence</strong>
-        </p>
-      </aside>
-
-      <main className="user-main">
-        <header className="user-header">
-          <div>
-            <h1>Events</h1>
-            <p>Create and manage your events in one place</p>
-          </div>
-
-          <div className="user-session">
-            {currentUser && (
-              <div className="user-info" title={currentUser.email}>
-                <span className="user-avatar" aria-hidden="true">
-                  {currentUser.full_name?.charAt(0).toUpperCase()}
-                </span>
-                <div className="user-details">
-                  <span className="user-name">{currentUser.full_name}</span>
-                  {currentUser.tenant_name && (
-                    <span className="user-tenant">{currentUser.tenant_name}</span>
-                  )}
-                  <span className="user-tenant-id" title="Tenant ID">
-                    {currentUser.tenant_id}
-                  </span>
-                </div>
-              </div>
-            )}
-            <button className="cancel-button user-logout" type="button" onClick={onLogout}>
-              Log out
-            </button>
-          </div>
-        </header>
-
+  } else {
+    content = (
+      <>
         <div className="header-actions">
           {canWrite && (
-            <button className="create-event" type="button" onClick={openCreateForm}>
-              <span className="plus-icon" aria-hidden="true">
-                +
-              </span>
+            <button className="create-event" type="button" onClick={() => goTo('create')}>
+              <Icon name="create" />
               Create event
             </button>
           )}
@@ -568,34 +456,28 @@ function EventsApp({ onLogout }) {
             </span>
           )}
           {isOwner && (
-            <button className="cancel-button" type="button" onClick={() => setIsViewingTeam(true)}>
+            <button className="cancel-button" type="button" onClick={() => goTo('team')}>
               Team
             </button>
           )}
         </div>
 
-        {error && (
-          <p className="form-error" role="alert">
-            {error}
-          </p>
-        )}
+        {errorMessage}
 
         <section className="statistics" aria-label="Event statistics">
           {[
             ['Total events', statistics.total, 'total', false, 'users'],
-            ['Upcoming', statistics.upcoming, 'upcoming', true, 'calendar'],
-            ['Completed', statistics.completed, 'completed', true, 'calendar'],
+            ['Upcoming', statistics.upcoming, 'upcoming', true, 'events'],
+            ['Completed', statistics.completed, 'completed', true, 'events'],
           ].map(([label, value, tone, isInteractive, icon]) => (
             <button
               className={`${isInteractive ? 'stat-card interactive' : 'stat-card'} ${tone}`}
               key={label}
               type="button"
-              onClick={
-                label === 'Upcoming' ? openUpcomingEvents : openCompletedEvents
-              }
+              onClick={() => goTo(label === 'Upcoming' ? 'upcoming' : 'completed')}
             >
               <h2>{label}</h2>
-              <StatIcon name={icon} />
+              <Icon name={icon} className="stat-icon" />
               <p className={`stat-value ${tone}`}>{value}</p>
             </button>
           ))}
@@ -643,35 +525,29 @@ function EventsApp({ onLogout }) {
             </section>
           </div>
         </div>
-      </main>
-    </div>
-  )
-}
+      </>
+    )
+  }
 
-function StatIcon({ name }) {
   return (
-    <svg
-      className="stat-icon"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
+    <Shell
+      brand="Events Manager"
+      nav={nav}
+      active={page}
+      onNavigate={goTo}
+      title={title}
+      subtitle={subtitle}
+      user={
+        currentUser && {
+          name: currentUser.full_name,
+          lines: [currentUser.tenant_name, currentUser.tenant_id],
+          title: currentUser.email,
+        }
+      }
+      onLogout={onLogout}
     >
-      {name === 'users' ? (
-        <>
-          <circle cx="9" cy="8" r="3.5" />
-          <path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6M16 4.8a3.5 3.5 0 010 6.4M18 14.4c2 .7 3.5 2.6 3.5 5.6" />
-        </>
-      ) : (
-        <>
-          <rect x="3" y="5" width="18" height="16" rx="2" />
-          <path d="M3 10h18M8 3v4M16 3v4" />
-        </>
-      )}
-    </svg>
+      {content}
+    </Shell>
   )
 }
 
