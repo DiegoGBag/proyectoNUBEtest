@@ -162,11 +162,15 @@
   opacity: 0.7;
 }
 
-.app-logout {
-  min-width: 0;
-  padding: 14px 28px;
-  border-radius: 14px;
-  font-size: 17px;
+.app-nav .app-nav-logout {
+  margin-top: 14px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 0 0 12px 12px;
+}
+
+.app-nav .app-nav-logout:hover {
+  color: #ffb4b4;
 }
 
 /* ---------- Shared content styling (everything inside .app-main) ---------- */
