@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { login, register } from './api'
-import HalftoneBackground from './HalftoneBackground'
 
 const emptyForm = { fullName: '', tenantName: '', email: '', password: '' }
 
@@ -36,14 +35,12 @@ function AuthScreen({ onAuthenticated }) {
   return (
     <div className="auth-split">
       <section className="auth-hero">
-        <HalftoneBackground />
-        <div className="auth-hero-content">
-          <h2 className="auth-hero-title">Events</h2>
-          <p className="auth-hero-text">
-            Plan, publish and track every event of your organization from one
-            simple, secure workspace. Built for teams that move fast.
-          </p>
-        </div>
+        <p className="auth-hero-brand">Event Manager</p>
+        <h2 className="auth-hero-title">
+          Plan Every Event
+          <br />
+          With <strong>Confidence</strong>
+        </h2>
       </section>
 
       <main className="auth-panel">
