@@ -131,6 +131,7 @@ def delete_member(user_id: uuid.UUID, owner: Member = Depends(require_owner), db
         )
     db.execute(delete(TenantUser).where(TenantUser.tenant_id == owner.tenant_id, TenantUser.user_id == user_id))
     db.execute(delete(UserActivity).where(UserActivity.tenant_id == owner.tenant_id, UserActivity.user_id == user_id))
+    db.execute(delete(EventRsvp).where(EventRsvp.tenant_id == owner.tenant_id, EventRsvp.user_id == user_id))
     # El perfil solo se borra si no pertenece a ninguna otra organizacion.
     if db.scalar(select(func.count()).where(TenantUser.user_id == user_id)) == 0:
         db.delete(user)

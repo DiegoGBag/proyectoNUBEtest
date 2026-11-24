@@ -2,13 +2,14 @@ import uuid
 from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlalchemy import Row, case, func, or_, select
+from sqlalchemy import Row, case, delete, exists, func, or_, select
 from sqlalchemy.orm import Session
 
-from app.api.deps import Member, get_db, get_member, require_writer
+from app.api.deps import Member, get_db, get_member, require_owner, require_writer
 from app.core import activity
-from app.models import Event, EventType
+from app.models import Event, EventRsvp, EventType, TenantUser, User
 from app.schemas.event import (
+    Attendee,
     EventCreate,
     EventRead,
     EventStats,
@@ -31,7 +32,17 @@ def _track(db: Session, user: Member, action: str, detail: str | None = None) ->
         activity.record(db, user.tenant_id, user.user_id, action, detail)
 
 
-def _select_events():
+def _select_events(user_id: uuid.UUID):
+    going_count = (
+        select(func.count())
+        .where(EventRsvp.event_id == Event.event_id)
+        .correlate(Event)
+        .scalar_subquery()
+    )
+    is_going = case(
+        (exists().where(EventRsvp.event_id == Event.event_id, EventRsvp.user_id == user_id), True),
+        else_=False,
+    )
     return select(
         Event.event_id,
         Event.name,
@@ -43,6 +54,8 @@ def _select_events():
         Event.expected_attendees,
         Event.status,
         Event.created_at,
+        going_count.label("going_count"),
+        is_going.label("is_going"),
     ).join(EventType, Event.event_type_id == EventType.event_type_id)
 
 
@@ -80,9 +93,9 @@ def _check_past_status(event_date: datetime, event_status: str) -> None:
         )
 
 
-def _get_event_read(db: Session, event_id: uuid.UUID, tenant_id: uuid.UUID) -> EventRead:
+def _get_event_read(db: Session, event_id: uuid.UUID, tenant_id: uuid.UUID, user_id: uuid.UUID) -> EventRead:
     row = db.execute(
-        _select_events().where(Event.event_id == event_id, Event.tenant_id == tenant_id)
+        _select_events(user_id).where(Event.event_id == event_id, Event.tenant_id == tenant_id)
     ).first()
     if row is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Event not found")
@@ -160,7 +173,7 @@ def upcoming(user: Member = Depends(get_member), db: Session = Depends(get_db)):
     # Se excluyen los eventos de dias anteriores. Margen de 24 h porque el "hoy" depende
     # de la zona horaria del usuario; el corte exacto por dia local lo hace el frontend.
     rows = db.execute(
-        _select_events()
+        _select_events(user.user_id)
         .where(
             Event.tenant_id == user.tenant_id,
             Event.status.in_(UPCOMING_STATUSES),
@@ -175,7 +188,7 @@ def upcoming(user: Member = Depends(get_member), db: Session = Depends(get_db)):
 @router.get("/completed", response_model=list[EventRead])
 def completed(user: Member = Depends(get_member), db: Session = Depends(get_db)):
     rows = db.execute(
-        _select_events()
+        _select_events(user.user_id)
         .where(
             Event.tenant_id == user.tenant_id,
             or_(Event.status == "completed", Event.event_date < _utcnow()),
@@ -189,7 +202,7 @@ def completed(user: Member = Depends(get_member), db: Session = Depends(get_db))
 @router.get("", response_model=list[EventRead])
 def list_events(user: Member = Depends(get_member), db: Session = Depends(get_db)):
     rows = db.execute(
-        _select_events().where(Event.tenant_id == user.tenant_id).order_by(Event.event_date.desc())
+        _select_events(user.user_id).where(Event.tenant_id == user.tenant_id).order_by(Event.event_date.desc())
     ).all()
     return [_to_read(r) for r in rows]
 
@@ -217,7 +230,7 @@ def create_event(
     )
     db.add(event)
     db.commit()
-    return _get_event_read(db, event.event_id, user.tenant_id)
+    return _get_event_read(db, event.event_id, user.tenant_id, user.user_id)
 
 
 @router.get("/{event_id}", response_model=EventRead)
@@ -226,7 +239,7 @@ def get_event(
     user: Member = Depends(get_member),
     db: Session = Depends(get_db),
 ):
-    event = _get_event_read(db, event_id, user.tenant_id)
+    event = _get_event_read(db, event_id, user.tenant_id, user.user_id)
     _track(db, user, activity.VIEW_EVENT, event.name)
     return event
 
@@ -250,7 +263,72 @@ def update_event(
     event.expected_attendees = body.expected_attendees
     event.status = body.status
     db.commit()
-    return _get_event_read(db, event_id, user.tenant_id)
+    return _get_event_read(db, event_id, user.tenant_id, user.user_id)
+
+
+# --- Asistencia ("Going") ----------------------------------------------------
+
+
+def _upcoming_event_or_error(db: Session, event_id: uuid.UUID, tenant_id: uuid.UUID) -> Event:
+    event = db.scalar(select(Event).where(Event.event_id == event_id, Event.tenant_id == tenant_id))
+    if event is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Event not found")
+    return event
+
+
+@router.put("/{event_id}/rsvp", response_model=EventRead)
+def confirm_going(
+    event_id: uuid.UUID,
+    user: Member = Depends(get_member),
+    db: Session = Depends(get_db),
+):
+    """El usuario confirma que asistira. Idempotente; solo para eventos programados."""
+    event = _upcoming_event_or_error(db, event_id, user.tenant_id)
+    if event.status not in UPCOMING_STATUSES or event.event_date < _utcnow() - timedelta(days=1):
+        raise HTTPException(status.HTTP_409_CONFLICT, "You can only confirm attendance to upcoming events")
+    already = db.scalar(
+        select(EventRsvp.event_id).where(EventRsvp.event_id == event_id, EventRsvp.user_id == user.user_id)
+    )
+    if already is None:
+        db.add(EventRsvp(event_id=event_id, user_id=user.user_id, tenant_id=user.tenant_id))
+        db.commit()
+    return _get_event_read(db, event_id, user.tenant_id, user.user_id)
+
+
+@router.delete("/{event_id}/rsvp", response_model=EventRead)
+def cancel_going(
+    event_id: uuid.UUID,
+    user: Member = Depends(get_member),
+    db: Session = Depends(get_db),
+):
+    _upcoming_event_or_error(db, event_id, user.tenant_id)
+    db.execute(delete(EventRsvp).where(EventRsvp.event_id == event_id, EventRsvp.user_id == user.user_id))
+    db.commit()
+    return _get_event_read(db, event_id, user.tenant_id, user.user_id)
+
+
+@router.get("/{event_id}/attendees", response_model=list[Attendee])
+def attendees(
+    event_id: uuid.UUID,
+    user: Member = Depends(require_owner),
+    db: Session = Depends(get_db),
+):
+    """Quienes confirmaron asistencia. Solo el dueno de la organizacion."""
+    _upcoming_event_or_error(db, event_id, user.tenant_id)
+    rows = db.execute(
+        select(
+            User.user_id,
+            User.full_name,
+            User.email,
+            TenantUser.role_name.label("role"),
+            EventRsvp.created_at.label("confirmed_at"),
+        )
+        .join(User, User.user_id == EventRsvp.user_id)
+        .join(TenantUser, (TenantUser.user_id == User.user_id) & (TenantUser.tenant_id == user.tenant_id))
+        .where(EventRsvp.event_id == event_id, EventRsvp.tenant_id == user.tenant_id)
+        .order_by(EventRsvp.created_at.asc())
+    ).all()
+    return [Attendee(**row._mapping) for row in rows]
 
 
 @router.delete("/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -264,6 +342,7 @@ def delete_event(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Event not found")
     # Nota: si ya existe una fila en EventImages para este evento, hay que
     # borrarla antes (se hara junto con la subida de imagenes a S3).
+    db.execute(delete(EventRsvp).where(EventRsvp.event_id == event_id))
     db.delete(event)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
