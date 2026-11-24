@@ -34,7 +34,6 @@ const emptyEvent = {
   description: '',
   attendees: '0',
   status: 'planned',
-  photo: null,
 }
 
 const eventTypes = [
@@ -372,23 +371,6 @@ function EventsApp({ onLogout }) {
             value={event.location}
             onChange={(formEvent) => updateEvent('location', formEvent.target.value)}
           />
-        </label>
-
-        <label>
-          Event photo
-          <span className="upload-area">
-            <input
-              className="file-input"
-              type="file"
-              accept=".jpg,.jpeg,.png,.gif"
-              onChange={(formEvent) => updateEvent('photo', formEvent.target.files[0] || null)}
-            />
-            <span className="upload-icon" aria-hidden="true">
-              <Icon name="upload" />
-            </span>
-            <strong>{event.photo ? event.photo.name : 'Drop photo here or click to upload'}</strong>
-            <small>JPG, PNG or GIF (max 5MB)</small>
-          </span>
         </label>
 
         <label>

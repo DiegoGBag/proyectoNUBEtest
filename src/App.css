@@ -135,44 +135,6 @@
   gap: 28px;
 }
 
-.upload-area {
-  position: relative;
-  display: flex;
-  min-height: 250px;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  gap: 12px;
-  border: 3px dashed #303030;
-  border-radius: 14px;
-  background: #0c0c0c;
-  color: var(--muted);
-  text-align: center;
-  cursor: pointer;
-}
-
-.upload-area strong {
-  color: var(--heading);
-  font-size: 23px;
-}
-
-.upload-area small {
-  font-size: 19px;
-}
-
-.upload-icon {
-  color: var(--muted);
-  font-size: 38px;
-}
-
-.file-input {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  opacity: 0;
-  cursor: pointer;
-}
-
 .event-form fieldset {
   padding: 0;
   border: 0;

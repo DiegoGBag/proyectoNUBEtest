@@ -29,7 +29,6 @@ const ICONS = {
   ),
   create: <path d="M12 5v14M5 12h14" />,
   logout: <path d="M9 4H5a1 1 0 00-1 1v14a1 1 0 001 1h4M16 8l4 4-4 4M20 12H9" />,
-  upload: <path d="M12 16V4M7 9l5-5 5 5M4 20h16" />,
   categories: <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2z" />,
   activity: <path d="M2 12h4l3-8 5 16 3-8h5" />,
   database: (
