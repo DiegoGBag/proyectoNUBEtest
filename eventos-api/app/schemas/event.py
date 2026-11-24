@@ -45,6 +45,7 @@ class EventRead(BaseModel):
     expected_attendees: int
     status: str
     display_status: str  # Completed | Past date | Planned | Active (calculado, no se guarda)
+    has_photo: bool = False
     created_at: datetime
 
 

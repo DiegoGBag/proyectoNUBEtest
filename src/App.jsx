@@ -1,6 +1,7 @@
 import { Suspense, lazy, useCallback, useEffect, useState } from 'react'
 import './App.css'
 import AuthScreen from './AuthScreen'
+import EventPhoto from './EventPhoto'
 import Shell, { Icon } from './Shell'
 import {
   clearToken,
@@ -12,6 +13,7 @@ import {
   getToken,
   getUpcomingEvents,
   isMasterAdmin,
+  uploadEventPhoto,
 } from './api'
 
 // El panel del administrador maestro se descarga solo cuando ese usuario entra.
@@ -36,6 +38,9 @@ const emptyEvent = {
   status: 'planned',
   photo: null,
 }
+
+const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/gif']
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024
 
 const eventTypes = [
   ['conference', 'Conference'],
@@ -153,6 +158,32 @@ function EventsApp({ onLogout }) {
 
   const isEventInPast = isPastDate(event.date)
 
+  // Vista previa de la foto elegida (URL local que se libera al cambiar o salir).
+  const [photoPreview, setPhotoPreview] = useState(null)
+  useEffect(() => {
+    if (!event.photo) {
+      setPhotoPreview(null)
+      return undefined
+    }
+    const url = URL.createObjectURL(event.photo)
+    setPhotoPreview(url)
+    return () => URL.revokeObjectURL(url)
+  }, [event.photo])
+
+  const choosePhoto = (file) => {
+    if (!file) return
+    if (!PHOTO_TYPES.includes(file.type)) {
+      setError('The photo must be a JPG, PNG or GIF image.')
+      return
+    }
+    if (file.size > MAX_PHOTO_BYTES) {
+      setError('The photo must be 5 MB or smaller.')
+      return
+    }
+    setError('')
+    updateEvent('photo', file)
+  }
+
   const goTo = (nextPage) => {
     setError('')
     if (nextPage === 'create') setEvent(emptyEvent)
@@ -165,11 +196,19 @@ function EventsApp({ onLogout }) {
     setIsSaving(true)
 
     try {
-      // Nota: la foto todavia no se envia; la subida a S3 es un paso posterior.
-      await createEventRequest(event)
+      const created = await createEventRequest(event)
+      let photoError = ''
+      if (event.photo) {
+        try {
+          await uploadEventPhoto(created.event_id, event.photo)
+        } catch (uploadError) {
+          photoError = `The event was created, but its photo could not be uploaded: ${uploadError.message}`
+        }
+      }
       setEvent(emptyEvent)
       await loadDashboard()
       setPage('home')
+      if (photoError) setError(photoError)
     } catch (requestError) {
       setError(requestError.message)
     } finally {
@@ -246,6 +285,12 @@ function EventsApp({ onLogout }) {
                   ) : (
                     typeEvents.map((savedEvent) => (
                       <article className="saved-event" key={savedEvent.id}>
+                        <EventPhoto
+                          eventId={savedEvent.id}
+                          hasPhoto={savedEvent.hasPhoto}
+                          alt={savedEvent.name}
+                          className="event-cover"
+                        />
                         <h3>{savedEvent.name}</h3>
                         <p>
                           {formatEventDate(savedEvent.date)} · {savedEvent.time}
@@ -283,7 +328,15 @@ function EventsApp({ onLogout }) {
             ) : (
               completedEvents.map((savedEvent) => (
                 <div className="completed-table-row" key={savedEvent.id} role="row">
-                  <strong role="cell">{savedEvent.name}</strong>
+                  <strong className="event-name-cell" role="cell">
+                    <EventPhoto
+                      eventId={savedEvent.id}
+                      hasPhoto={savedEvent.hasPhoto}
+                      alt=""
+                      className="event-thumb"
+                    />
+                    {savedEvent.name}
+                  </strong>
                   <span role="cell">
                     {eventTypes.find(([type]) => type === savedEvent.type)?.[1] ||
                       savedEvent.type}
@@ -376,19 +429,39 @@ function EventsApp({ onLogout }) {
 
         <label>
           Event photo
-          <span className="upload-area">
+          <span className={photoPreview ? 'upload-area has-preview' : 'upload-area'}>
             <input
               className="file-input"
               type="file"
               accept=".jpg,.jpeg,.png,.gif"
-              onChange={(formEvent) => updateEvent('photo', formEvent.target.files[0] || null)}
+              onChange={(formEvent) => {
+                choosePhoto(formEvent.target.files[0])
+                formEvent.target.value = ''
+              }}
             />
-            <span className="upload-icon" aria-hidden="true">
-              <Icon name="upload" />
-            </span>
-            <strong>{event.photo ? event.photo.name : 'Drop photo here or click to upload'}</strong>
-            <small>JPG, PNG or GIF (max 5MB)</small>
+            {photoPreview ? (
+              <>
+                <img className="upload-preview" src={photoPreview} alt="Preview of the selected photo" />
+                <span className="upload-caption">
+                  <strong>{event.photo.name}</strong>
+                  <small>Click to change the photo</small>
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="upload-icon" aria-hidden="true">
+                  <Icon name="upload" />
+                </span>
+                <strong>Drop photo here or click to upload</strong>
+                <small>JPG, PNG or GIF (max 5MB)</small>
+              </>
+            )}
           </span>
+          {photoPreview && (
+            <button className="remove-photo" type="button" onClick={() => updateEvent('photo', null)}>
+              Remove photo
+            </button>
+          )}
         </label>
 
         <label>

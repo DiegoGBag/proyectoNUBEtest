@@ -16,7 +16,7 @@ from app.api.deps import get_db, require_master_admin
 from app.api.routes.auth import _slugify
 from app.core import activity
 from app.core.security import hash_password, is_admin_identifier
-from app.models import Event, EventImage, EventType, Tenant, TenantUser, User, UserActivity
+from app.models import Event, EventImage, EventPhoto, EventType, Tenant, TenantUser, User, UserActivity
 from app.schemas.admin import (
     AdminEventCreate,
     AdminEventUpdate,
@@ -86,6 +86,7 @@ def _user_or_404(db: Session, user_id: uuid.UUID) -> User:
 def _delete_events(db: Session, *conditions) -> None:
     event_ids = select(Event.event_id).where(*conditions)
     db.execute(delete(EventImage).where(EventImage.event_id.in_(event_ids)))
+    db.execute(delete(EventPhoto).where(EventPhoto.event_id.in_(event_ids)))
     db.execute(delete(Event).where(*conditions))
 
 

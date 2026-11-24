@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import admin, admin_system, auth, events, team
 from app.core.config import settings
 from app.db.session import engine
-from app.models import UserActivity
+from app.models import EventPhoto, UserActivity
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +21,10 @@ async def lifespan(_: FastAPI):
         UserActivity.__table__.create(bind=engine, checkfirst=True)
     except Exception:  # noqa: BLE001
         logger.exception("Could not create dbo.UserActivity; activity monitoring will be empty")
+    try:
+        EventPhoto.__table__.create(bind=engine, checkfirst=True)
+    except Exception:  # noqa: BLE001
+        logger.exception("Could not create dbo.EventPhotos; event photos will not work")
     yield
 
 

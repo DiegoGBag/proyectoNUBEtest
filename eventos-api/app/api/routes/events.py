@@ -1,13 +1,13 @@
 import uuid
 from datetime import date, datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlalchemy import Row, case, func, or_, select
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from sqlalchemy import Row, case, delete, exists, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import Member, get_db, get_member, require_writer
 from app.core import activity
-from app.models import Event, EventType
+from app.models import Event, EventPhoto, EventType
 from app.schemas.event import (
     EventCreate,
     EventRead,
@@ -19,6 +19,14 @@ from app.schemas.event import (
 router = APIRouter(prefix="/api/events", tags=["events"])
 
 UPCOMING_STATUSES = ("planned", "active")
+
+MAX_PHOTO_BYTES = 5 * 1024 * 1024
+# Tipo permitido -> firmas (magic bytes) validas; no se confia solo en el Content-Type.
+PHOTO_SIGNATURES = {
+    "image/jpeg": (b"\xff\xd8\xff",),
+    "image/png": (b"\x89PNG\r\n\x1a\n",),
+    "image/gif": (b"GIF87a", b"GIF89a"),
+}
 
 
 def _utcnow() -> datetime:
@@ -43,6 +51,7 @@ def _select_events():
         Event.expected_attendees,
         Event.status,
         Event.created_at,
+        case((exists().where(EventPhoto.event_id == Event.event_id), True), else_=False).label("has_photo"),
     ).join(EventType, Event.event_type_id == EventType.event_type_id)
 
 
@@ -253,6 +262,61 @@ def update_event(
     return _get_event_read(db, event_id, user.tenant_id)
 
 
+@router.put("/{event_id}/photo", status_code=status.HTTP_204_NO_CONTENT)
+async def upload_photo(
+    event_id: uuid.UUID,
+    request: Request,
+    user: Member = Depends(require_writer),
+    db: Session = Depends(get_db),
+):
+    """Guarda (o reemplaza) la foto del evento. El cuerpo es la imagen cruda (jpg, png o gif, max. 5 MB)."""
+    content_type = request.headers.get("content-type", "").split(";")[0].strip().lower()
+    if content_type not in PHOTO_SIGNATURES:
+        raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, "Photo must be a JPG, PNG or GIF image")
+    declared = request.headers.get("content-length")
+    if declared and declared.isdigit() and int(declared) > MAX_PHOTO_BYTES:
+        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Photo must be 5 MB or smaller")
+    data = await request.body()
+    if len(data) > MAX_PHOTO_BYTES:
+        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Photo must be 5 MB or smaller")
+    if not data.startswith(PHOTO_SIGNATURES[content_type]):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "The file is not a valid image")
+
+    owned = db.scalar(select(Event.event_id).where(Event.event_id == event_id, Event.tenant_id == user.tenant_id))
+    if owned is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Event not found")
+
+    photo = db.get(EventPhoto, event_id)
+    if photo is None:
+        db.add(EventPhoto(event_id=event_id, content_type=content_type, data=data))
+    else:
+        photo.content_type = content_type
+        photo.data = data
+        photo.updated_at = _utcnow()
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/{event_id}/photo")
+def get_photo(
+    event_id: uuid.UUID,
+    user: Member = Depends(get_member),
+    db: Session = Depends(get_db),
+):
+    row = db.execute(
+        select(EventPhoto.content_type, EventPhoto.data)
+        .join(Event, Event.event_id == EventPhoto.event_id)
+        .where(EventPhoto.event_id == event_id, Event.tenant_id == user.tenant_id)
+    ).first()
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Photo not found")
+    return Response(
+        content=row.data,
+        media_type=row.content_type,
+        headers={"Cache-Control": "private, max-age=3600", "X-Content-Type-Options": "nosniff"},
+    )
+
+
 @router.delete("/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_event(
     event_id: uuid.UUID,
@@ -264,6 +328,7 @@ def delete_event(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Event not found")
     # Nota: si ya existe una fila en EventImages para este evento, hay que
     # borrarla antes (se hara junto con la subida de imagenes a S3).
+    db.execute(delete(EventPhoto).where(EventPhoto.event_id == event_id))
     db.delete(event)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -558,3 +558,85 @@
     width: 100%;
   }
 }
+
+/* ---------- Event photos ---------- */
+.app-main .upload-area.has-preview {
+  min-height: 260px;
+  overflow: hidden;
+  border-style: solid;
+  border-color: var(--border);
+  justify-content: flex-end;
+}
+
+.upload-preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.upload-caption {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 36px 20px 16px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+  text-align: left;
+  pointer-events: none;
+}
+
+.upload-caption strong {
+  overflow: hidden;
+  max-width: 100%;
+  color: #fff;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.upload-caption small {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.remove-photo {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #f19a9a;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.remove-photo:hover {
+  text-decoration: underline;
+}
+
+.event-cover {
+  display: block;
+  width: 100%;
+  height: 130px;
+  margin-bottom: 12px;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.completed-table-row .event-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.event-thumb {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 10px;
+  object-fit: cover;
+}
