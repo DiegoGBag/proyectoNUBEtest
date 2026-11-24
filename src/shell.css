@@ -623,3 +623,33 @@
   opacity: 0;
   cursor: inherit;
 }
+
+/* ---------- Empty state + chips on the dashboard ---------- */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 0 12px;
+}
+
+.empty-state svg {
+  width: 150px;
+  height: auto;
+}
+
+.empty-state p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.timeline-chip {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 3px 10px;
+  border-radius: 8px;
+  background: #2a2a2a;
+  color: var(--muted);
+  font-size: 12px;
+}

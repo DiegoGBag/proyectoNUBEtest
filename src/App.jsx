@@ -486,8 +486,8 @@ function EventsApp({ onLogout }) {
           <div className="home-side">
             <section className="home-card">
               <h2>Recent Event Activity</h2>
+              {recentCompleted.length === 0 && <EmptyState text="No activity yet" />}
               <ul className="timeline">
-                {recentCompleted.length === 0 && <li className="timeline-empty">No activity yet</li>}
                 {recentCompleted.map((savedEvent) => (
                   <li key={savedEvent.id}>
                     <span className="timeline-dot done" aria-hidden="true" />
@@ -503,18 +503,18 @@ function EventsApp({ onLogout }) {
 
             <section className="home-card">
               <h2>Upcoming Schedules / Milestones</h2>
+              {nextUpcoming.length === 0 && <EmptyState text="Nothing scheduled" />}
               <ul className="timeline">
-                {nextUpcoming.length === 0 && <li className="timeline-empty">Nothing scheduled</li>}
                 {nextUpcoming.map((savedEvent) => (
                   <li key={savedEvent.id}>
                     <span className="timeline-dot upcoming" aria-hidden="true" />
                     <div>
                       <strong>{savedEvent.name}</strong>
-                      <small>{savedEvent.location}</small>
+                      <span className="timeline-chip">{savedEvent.location}</span>
                     </div>
                     <time>
                       {formatEventDate(savedEvent.date)}
-                      {savedEvent.time ? ` · ${savedEvent.time}` : ''}
+                      {savedEvent.time ? ` - ${savedEvent.time}` : ''}
                     </time>
                   </li>
                 ))}
@@ -545,6 +545,36 @@ function EventsApp({ onLogout }) {
     >
       {content}
     </Shell>
+  )
+}
+
+// Ilustracion de "sin datos": una tarjeta de evento con nubes, en grises.
+function EmptyState({ text }) {
+  return (
+    <div className="empty-state">
+      <svg viewBox="0 0 160 110" aria-hidden="true">
+        <ellipse cx="82" cy="84" rx="62" ry="22" fill="#26262b" />
+        <path
+          d="M40 70a16 16 0 0 1 4-31 22 22 0 0 1 42-6 18 18 0 0 1 30 12 14 14 0 0 1 2 25z"
+          fill="#2c2c33"
+        />
+        <path
+          d="M118 38a8 8 0 0 1 3-15 11 11 0 0 1 20 3 8 8 0 0 1 1 12z"
+          fill="#33333b"
+        />
+        <rect x="46" y="38" width="76" height="52" rx="7" fill="#46464f" />
+        <rect x="46" y="38" width="76" height="12" rx="7" fill="#585863" />
+        <rect x="62" y="30" width="5" height="14" rx="2.5" fill="#7a7a86" />
+        <rect x="100" y="30" width="5" height="14" rx="2.5" fill="#7a7a86" />
+        <rect x="55" y="58" width="30" height="4" rx="2" fill="#6b6b77" />
+        <rect x="55" y="67" width="22" height="4" rx="2" fill="#6b6b77" />
+        <rect x="55" y="76" width="26" height="4" rx="2" fill="#6b6b77" />
+        <circle cx="103" cy="68" r="10" fill="#7a7a86" />
+        <circle cx="103" cy="65" r="3.5" fill="#46464f" />
+        <path d="M96 77a7 5 0 0 1 14 0z" fill="#46464f" />
+      </svg>
+      <p>{text}</p>
+    </div>
   )
 }
 
