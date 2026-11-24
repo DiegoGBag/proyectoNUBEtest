@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, LargeBinary, String, Text, text
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, String, Text, text
 from sqlalchemy.dialects.mssql import UNIQUEIDENTIFIER
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -65,23 +65,3 @@ class EventImage(Base):
     storage_provider: Mapped[str] = mapped_column("StorageProvider", String(20), default="s3")
     storage_key: Mapped[str] = mapped_column("StorageKey", String(500))
     storage_url: Mapped[str | None] = mapped_column("StorageUrl", String(1000), nullable=True)
-
-
-class EventPhoto(Base):
-    """Foto de portada del evento, guardada en la propia base (una por evento).
-
-    Mientras la subida a S3 (EventImages) no exista, esta tabla permite que la foto
-    permanezca con el evento. Se crea sola al arrancar la API (ver app/main.py).
-    """
-
-    __tablename__ = "EventPhotos"
-    __table_args__ = {"schema": "dbo"}
-
-    event_id: Mapped[uuid.UUID] = mapped_column(
-        "EventId", UNIQUEIDENTIFIER(as_uuid=True), ForeignKey("dbo.Events.EventId"), primary_key=True
-    )
-    content_type: Mapped[str] = mapped_column("ContentType", String(100))
-    data: Mapped[bytes] = mapped_column("Data", LargeBinary)
-    updated_at: Mapped[datetime] = mapped_column(
-        "UpdatedAt", DateTime, server_default=text("SYSUTCDATETIME()")
-    )

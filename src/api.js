@@ -105,7 +105,6 @@ function toEvent(apiEvent) {
     attendees: apiEvent.expected_attendees,
     status: apiEvent.status,
     displayStatus: apiEvent.display_status,
-    hasPhoto: Boolean(apiEvent.has_photo),
   }
 }
 
@@ -140,39 +139,6 @@ export const createEvent = (form) =>
       status: form.status,
     },
   })
-
-// La foto vive en la API (no en una URL publica), asi que se sube/descarga con el token.
-export async function uploadEventPhoto(eventId, file) {
-  let response
-  try {
-    response = await fetch(`${API_URL}/api/events/${eventId}/photo`, {
-      method: 'PUT',
-      headers: { 'Content-Type': file.type, Authorization: `Bearer ${getToken()}` },
-      body: file,
-    })
-  } catch {
-    throw new Error('Cannot reach the server. Is the API running?')
-  }
-  if (!response.ok) {
-    let message = `Photo upload failed (${response.status})`
-    try {
-      const data = await response.json()
-      if (typeof data.detail === 'string') message = data.detail
-    } catch {
-      /* respuesta sin JSON */
-    }
-    throw new Error(message)
-  }
-}
-
-// Devuelve una URL local (blob:) para usar en <img>, o null si el evento no tiene foto.
-export async function fetchEventPhoto(eventId) {
-  const response = await fetch(`${API_URL}/api/events/${eventId}/photo`, {
-    headers: { Authorization: `Bearer ${getToken()}` },
-  })
-  if (!response.ok) return null
-  return URL.createObjectURL(await response.blob())
-}
 
 // Arma "?a=1&b=2" ignorando los valores vacios.
 export const toQuery = (params = {}) => {
