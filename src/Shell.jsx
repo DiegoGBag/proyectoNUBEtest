@@ -27,6 +27,13 @@ const ICONS = {
       <path d="M8 12.5l3 3 5-6" />
     </>
   ),
+  tag: <path d="M3 12V4a1 1 0 011-1h8l9 9-9 9zM8 8h.01" />,
+  pin: (
+    <>
+      <path d="M12 21s7-6.2 7-11.5a7 7 0 10-14 0C5 14.8 12 21 12 21z" />
+      <circle cx="12" cy="9.5" r="2.5" />
+    </>
+  ),
   create: <path d="M12 5v14M5 12h14" />,
   logout: <path d="M9 4H5a1 1 0 00-1 1v14a1 1 0 001 1h4M16 8l4 4-4 4M20 12H9" />,
   categories: <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2z" />,

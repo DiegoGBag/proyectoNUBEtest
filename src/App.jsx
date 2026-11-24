@@ -317,60 +317,75 @@ function EventsApp({ onLogout }) {
         <div className="form-row">
           <label>
             Event type
-            <select
-              required
-              value={event.type}
-              onChange={(formEvent) => updateEvent('type', formEvent.target.value)}
-            >
-              <option value="">Select an event type</option>
-              {eventTypes.map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
+            <span className="field-icon has-chevron">
+              <Icon name="tag" className="field-icon-svg" />
+              <select
+                required
+                value={event.type}
+                onChange={(formEvent) => updateEvent('type', formEvent.target.value)}
+              >
+                <option value="">Select an event type</option>
+                {eventTypes.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </span>
           </label>
           <label>
             Expected attendees
-            <input
-              min="0"
-              type="number"
-              value={event.attendees}
-              onChange={(formEvent) => updateEvent('attendees', formEvent.target.value)}
-            />
+            <span className="field-icon">
+              <Icon name="users" className="field-icon-svg" />
+              <input
+                min="0"
+                type="number"
+                value={event.attendees}
+                onChange={(formEvent) => updateEvent('attendees', formEvent.target.value)}
+              />
+            </span>
           </label>
         </div>
 
         <div className="form-row">
           <label>
             Date
-            <input
-              required
-              type="date"
-              value={event.date}
-              onChange={(formEvent) => updateEvent('date', formEvent.target.value)}
-            />
+            <span className="field-icon">
+              <Icon name="events" className="field-icon-svg" />
+              <input
+                required
+                type="date"
+                value={event.date}
+                onChange={(formEvent) => updateEvent('date', formEvent.target.value)}
+              />
+            </span>
           </label>
           <label>
             Time
-            <input
-              required
-              type="time"
-              value={event.time}
-              onChange={(formEvent) => updateEvent('time', formEvent.target.value)}
-            />
+            <span className="field-icon">
+              <Icon name="upcoming" className="field-icon-svg" />
+              <input
+                required
+                type="time"
+                value={event.time}
+                onChange={(formEvent) => updateEvent('time', formEvent.target.value)}
+              />
+            </span>
           </label>
         </div>
 
         <label>
           Location
-          <input
-            required
-            type="text"
-            placeholder="Event venue or address"
-            value={event.location}
-            onChange={(formEvent) => updateEvent('location', formEvent.target.value)}
-          />
+          <span className="field-icon">
+            <Icon name="pin" className="field-icon-svg" />
+            <input
+              required
+              type="text"
+              placeholder="Event venue or address"
+              value={event.location}
+              onChange={(formEvent) => updateEvent('location', formEvent.target.value)}
+            />
+          </span>
         </label>
 
         <label>
