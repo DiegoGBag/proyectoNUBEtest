@@ -43,12 +43,6 @@ function TeamPanel() {
     feed.reload()
   }
 
-  const showActivityOf = (userId) => {
-    setUserFilter(userId)
-    setOffset(0)
-    document.getElementById('team-activity')?.scrollIntoView({ behavior: 'smooth' })
-  }
-
   const deleteMember = async (member) => {
     const ok = window.confirm(
       `Delete the profile of ${member.full_name}?\n\nTheir activity history is deleted too. To keep the history, deactivate the profile instead.`,
@@ -87,9 +81,6 @@ function TeamPanel() {
       label: '',
       render: (m) => (
         <div className="actions">
-          <button className="admin-btn small" type="button" onClick={() => showActivityOf(m.user_id)}>
-            Activity
-          </button>
           <button className="admin-btn small" type="button" onClick={() => setForm(m)}>
             Edit
           </button>
