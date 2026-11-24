@@ -10,10 +10,8 @@ import {
   getOverview,
   getStats,
   getToken,
-  getAttendees,
   getUpcomingEvents,
   isMasterAdmin,
-  setGoing,
 } from './api'
 
 // El panel del administrador maestro se descarga solo cuando ese usuario entra.
@@ -85,11 +83,6 @@ function EventsApp({ onLogout }) {
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
   const [currentUser, setCurrentUser] = useState(null)
-  // Detalle de un evento (solo lo abre el owner): evento elegido, desde donde se abrio y asistentes.
-  const [selectedEvent, setSelectedEvent] = useState(null)
-  const [detailFrom, setDetailFrom] = useState('upcoming')
-  const [attendees, setAttendees] = useState(null)
-  const [goingBusyId, setGoingBusyId] = useState(null)
 
   // Los perfiles `member` (sub-usuarios) son de solo lectura; la API lo exige igualmente.
   const canWrite = Boolean(currentUser) && currentUser.role !== 'member'
@@ -165,36 +158,6 @@ function EventsApp({ onLogout }) {
     setPage(nextPage)
   }
 
-  const replaceEvent = (updated) => {
-    const swap = (list) => list.map((item) => (item.id === updated.id ? updated : item))
-    setUpcomingEvents(swap)
-    setCompletedEvents(swap)
-    setSelectedEvent((current) => (current?.id === updated.id ? updated : current))
-  }
-
-  const toggleGoing = async (savedEvent) => {
-    setGoingBusyId(savedEvent.id)
-    try {
-      replaceEvent(await setGoing(savedEvent.id, !savedEvent.isGoing))
-      setError('')
-    } catch (requestError) {
-      setError(requestError.message)
-    } finally {
-      setGoingBusyId(null)
-    }
-  }
-
-  const openDetail = (savedEvent, from) => {
-    setSelectedEvent(savedEvent)
-    setDetailFrom(from)
-    setAttendees(null)
-    setError('')
-    setPage('detail')
-    getAttendees(savedEvent.id)
-      .then(setAttendees)
-      .catch((requestError) => setError(requestError.message))
-  }
-
   const createEvent = async (formEvent) => {
     formEvent.preventDefault()
     setError('')
@@ -234,7 +197,6 @@ function EventsApp({ onLogout }) {
     upcoming: ['Upcoming events', 'All your planned and active events, organized by type'],
     completed: ['Completed events', 'Review the details and results of your past events'],
     create: ['Create event', 'Fill in the details to get started'],
-    detail: [selectedEvent?.name ?? 'Event', 'Event details and attendance'],
     team: [
       'Team',
       `Read-only profiles for the people in ${currentUser?.tenant_name || 'your organization'}. They can view events but never change them.`,
@@ -291,31 +253,6 @@ function EventsApp({ onLogout }) {
                         <span className={`event-status ${savedEvent.status}`}>
                           {savedEvent.status}
                         </span>
-                        <div className="event-going">
-                          <span className="going-count">
-                            <Icon name="users" />
-                            {savedEvent.goingCount} going
-                          </span>
-                          {isOwner ? (
-                            <button
-                              className="going-button"
-                              type="button"
-                              onClick={() => openDetail(savedEvent, 'upcoming')}
-                            >
-                              View details
-                            </button>
-                          ) : (
-                            <button
-                              className={savedEvent.isGoing ? 'going-button active' : 'going-button'}
-                              type="button"
-                              aria-pressed={savedEvent.isGoing}
-                              disabled={goingBusyId === savedEvent.id}
-                              onClick={() => toggleGoing(savedEvent)}
-                            >
-                              {savedEvent.isGoing ? '✓ Going' : 'Going'}
-                            </button>
-                          )}
-                        </div>
                       </article>
                     ))
                   )}
@@ -338,25 +275,13 @@ function EventsApp({ onLogout }) {
               <span role="columnheader">Date</span>
               <span role="columnheader">Location</span>
               <span role="columnheader">Attendees</span>
-              <span role="columnheader">Going</span>
               <span role="columnheader">Status</span>
             </div>
             {completedEvents.length === 0 ? (
               <p className="empty-completed">No completed events yet.</p>
             ) : (
               completedEvents.map((savedEvent) => (
-                <div
-                  className={isOwner ? 'completed-table-row clickable' : 'completed-table-row'}
-                  key={savedEvent.id}
-                  role="row"
-                  tabIndex={isOwner ? 0 : undefined}
-                  onClick={isOwner ? () => openDetail(savedEvent, 'completed') : undefined}
-                  onKeyDown={
-                    isOwner
-                      ? (keyEvent) => keyEvent.key === 'Enter' && openDetail(savedEvent, 'completed')
-                      : undefined
-                  }
-                >
+                <div className="completed-table-row" key={savedEvent.id} role="row">
                   <strong role="cell">{savedEvent.name}</strong>
                   <span role="cell">
                     {eventTypes.find(([type]) => type === savedEvent.type)?.[1] ||
@@ -365,7 +290,6 @@ function EventsApp({ onLogout }) {
                   <span role="cell">{formatEventDate(savedEvent.date)}</span>
                   <span role="cell">{savedEvent.location}</span>
                   <span role="cell">{savedEvent.attendees}</span>
-                  <span role="cell">{savedEvent.goingCount}</span>
                   <span className="completed-label" role="cell">
                     {savedEvent.displayStatus}
                   </span>
@@ -374,89 +298,6 @@ function EventsApp({ onLogout }) {
             )}
           </div>
         </section>
-      </>
-    )
-  } else if (page === 'detail' && selectedEvent) {
-    const expected = Number(selectedEvent.attendees) || 0
-    const share = expected > 0 ? Math.min(100, (selectedEvent.goingCount / expected) * 100) : 0
-    const typeLabel =
-      eventTypes.find(([type]) => type === selectedEvent.type)?.[1] || selectedEvent.type
-    content = (
-      <>
-        <button className="back-button" type="button" onClick={() => goTo(detailFrom)}>
-          ← Back to {detailFrom === 'completed' ? 'completed' : 'upcoming'} events
-        </button>
-        {errorMessage}
-        <div className="detail-grid">
-          <section className="home-card">
-            <h2>Event information</h2>
-            <dl className="detail-list">
-              <div>
-                <dt>Type</dt>
-                <dd>{typeLabel}</dd>
-              </div>
-              <div>
-                <dt>Status</dt>
-                <dd>
-                  <span className={`event-status ${selectedEvent.status}`}>
-                    {selectedEvent.displayStatus}
-                  </span>
-                </dd>
-              </div>
-              <div>
-                <dt>Date</dt>
-                <dd>{formatEventDate(selectedEvent.date)}</dd>
-              </div>
-              <div>
-                <dt>Time</dt>
-                <dd>{selectedEvent.time}</dd>
-              </div>
-              <div>
-                <dt>Location</dt>
-                <dd>{selectedEvent.location}</dd>
-              </div>
-              <div>
-                <dt>Expected attendees</dt>
-                <dd>{expected}</dd>
-              </div>
-            </dl>
-            <h3 className="detail-subtitle">Description</h3>
-            <p className="detail-description">
-              {selectedEvent.description || 'No description provided.'}
-            </p>
-          </section>
-
-          <section className="home-card">
-            <h2>Attendance</h2>
-            <p className="going-summary">
-              <strong>{selectedEvent.goingCount}</strong>
-              <span>
-                {expected > 0 ? ` of ${expected} expected` : ' confirmed'} · {Math.round(share)}%
-              </span>
-            </p>
-            <div className="going-progress" aria-hidden="true">
-              <span style={{ width: `${share}%` }} />
-            </div>
-            <ul className="attendee-list">
-              {attendees === null && !error && <li className="timeline-empty">Loading…</li>}
-              {attendees?.length === 0 && (
-                <li className="timeline-empty">Nobody has confirmed yet</li>
-              )}
-              {attendees?.map((attendee) => (
-                <li key={attendee.user_id}>
-                  <span className="app-avatar small" aria-hidden="true">
-                    {attendee.full_name.charAt(0).toUpperCase()}
-                  </span>
-                  <div>
-                    <strong>{attendee.full_name}</strong>
-                    <small>{attendee.email}</small>
-                  </div>
-                  <time>{formatEventDate(attendee.confirmed_at.slice(0, 10))}</time>
-                </li>
-              ))}
-            </ul>
-          </section>
-        </div>
       </>
     )
   } else if (page === 'create' && canWrite) {
@@ -689,7 +530,7 @@ function EventsApp({ onLogout }) {
     <Shell
       brand="Events Manager"
       nav={nav}
-      active={page === 'detail' ? detailFrom : page}
+      active={page}
       onNavigate={goTo}
       title={title}
       subtitle={subtitle}

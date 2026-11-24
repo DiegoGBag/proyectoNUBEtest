@@ -105,8 +105,6 @@ function toEvent(apiEvent) {
     attendees: apiEvent.expected_attendees,
     status: apiEvent.status,
     displayStatus: apiEvent.display_status,
-    goingCount: apiEvent.going_count ?? 0,
-    isGoing: Boolean(apiEvent.is_going),
   }
 }
 
@@ -141,13 +139,6 @@ export const createEvent = (form) =>
       status: form.status,
     },
   })
-
-// Confirmar / cancelar asistencia ("Going"). Devuelve el evento actualizado.
-export const setGoing = async (eventId, going) =>
-  toEvent(await request(`/api/events/${eventId}/rsvp`, { method: going ? 'PUT' : 'DELETE' }))
-
-// Quienes confirmaron asistencia (solo el owner).
-export const getAttendees = (eventId) => request(`/api/events/${eventId}/attendees`)
 
 // Arma "?a=1&b=2" ignorando los valores vacios.
 export const toQuery = (params = {}) => {

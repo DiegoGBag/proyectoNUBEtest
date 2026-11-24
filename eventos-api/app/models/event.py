@@ -65,22 +65,3 @@ class EventImage(Base):
     storage_provider: Mapped[str] = mapped_column("StorageProvider", String(20), default="s3")
     storage_key: Mapped[str] = mapped_column("StorageKey", String(500))
     storage_url: Mapped[str | None] = mapped_column("StorageUrl", String(1000), nullable=True)
-
-
-class EventRsvp(Base):
-    """Confirmacion de asistencia ("Going") de un usuario a un evento.
-
-    Sin llaves foraneas a proposito (igual que UserActivity): borrar eventos o usuarios
-    nunca queda bloqueado por esta tabla, y las filas huerfanas no aparecen porque las
-    consultas siempre unen con Events y Users. Se crea sola al arrancar la API.
-    """
-
-    __tablename__ = "EventRsvps"
-    __table_args__ = {"schema": "dbo"}
-
-    event_id: Mapped[uuid.UUID] = mapped_column("EventId", UNIQUEIDENTIFIER(as_uuid=True), primary_key=True)
-    user_id: Mapped[uuid.UUID] = mapped_column("UserId", UNIQUEIDENTIFIER(as_uuid=True), primary_key=True)
-    tenant_id: Mapped[uuid.UUID] = mapped_column("TenantId", UNIQUEIDENTIFIER(as_uuid=True))
-    created_at: Mapped[datetime] = mapped_column(
-        "CreatedAt", DateTime, server_default=text("SYSUTCDATETIME()")
-    )

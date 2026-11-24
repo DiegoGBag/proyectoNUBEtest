@@ -45,8 +45,6 @@ class EventRead(BaseModel):
     expected_attendees: int
     status: str
     display_status: str  # Completed | Past date | Planned | Active (calculado, no se guarda)
-    going_count: int = 0  # personas que confirmaron asistencia
-    is_going: bool = False  # el usuario actual confirmo
     created_at: datetime
 
 
@@ -61,11 +59,3 @@ class MonthlyOverview(BaseModel):
     total: int
     upcoming: int
     completed: int
-
-
-class Attendee(BaseModel):
-    user_id: uuid.UUID
-    full_name: str
-    email: str
-    role: str
-    confirmed_at: datetime
